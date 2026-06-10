@@ -28,6 +28,18 @@
       </div>
       <ul id="member-list" class="member-list"></ul>
       <p id="empty-message" class="empty-message">まだメンバーがいません。上から追加してください。</p>
+
+      <!-- 保存リスト（使い回し） -->
+      <div class="saved-block">
+        <h3>保存リスト</h3>
+        <p class="hint">今のメンバーに名前を付けて保存しておくと、いつでも呼び出して使い回せます。</p>
+        <form id="save-form" class="input-row">
+          <input type="text" id="save-name" placeholder="リスト名（例: 〇〇チーム）" autocomplete="off" maxlength="30">
+          <button type="submit" class="btn btn-secondary">現在のメンバーを保存</button>
+        </form>
+        <ul id="saved-list" class="saved-list"></ul>
+        <p id="saved-empty" class="empty-message">保存されたリストはありません。</p>
+      </div>
     </section>
 
     <!-- チーム分け設定 -->

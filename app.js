@@ -2,9 +2,11 @@
   "use strict";
 
   var STORAGE_KEY = "team-division-members";
+  var SAVED_KEY = "team-division-saved";
 
   // ---- 状態 ----
   var members = loadMembers();
+  var savedLists = loadSaved(); // { 名前: [メンバー...] }
   var lastDivision = null; // 再シャッフル用に直近の設定を保持
 
   // ---- DOM ----
@@ -21,6 +23,10 @@
   var resultEl = document.getElementById("result");
   var reshuffleBtn = document.getElementById("reshuffle-btn");
   var modeRadios = document.querySelectorAll('input[name="mode"]');
+  var saveForm = document.getElementById("save-form");
+  var saveNameInput = document.getElementById("save-name");
+  var savedListEl = document.getElementById("saved-list");
+  var savedEmpty = document.getElementById("saved-empty");
 
   // ---- localStorage ----
   function loadMembers() {
@@ -38,6 +44,24 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(members));
     } catch (e) {
       /* 保存失敗は無視（プライベートモード等） */
+    }
+  }
+
+  function loadSaved() {
+    try {
+      var raw = localStorage.getItem(SAVED_KEY);
+      var obj = raw ? JSON.parse(raw) : {};
+      return obj && typeof obj === "object" ? obj : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function persistSaved() {
+    try {
+      localStorage.setItem(SAVED_KEY, JSON.stringify(savedLists));
+    } catch (e) {
+      /* 保存失敗は無視 */
     }
   }
 
@@ -68,6 +92,85 @@
     members = [];
     saveMembers();
     renderMembers();
+  }
+
+  // ---- 保存リスト（使い回し）----
+  function saveCurrentAsList(name) {
+    name = name.trim();
+    if (!name) {
+      window.alert("リスト名を入力してください。");
+      return;
+    }
+    if (members.length === 0) {
+      window.alert("保存するメンバーがいません。");
+      return;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(savedLists, name) &&
+      !window.confirm("「" + name + "」は既にあります。上書きしますか？")
+    ) {
+      return;
+    }
+    savedLists[name] = members.slice();
+    persistSaved();
+    renderSaved();
+  }
+
+  function loadList(name) {
+    var list = savedLists[name];
+    if (!list) return;
+    if (
+      members.length > 0 &&
+      !window.confirm("現在のメンバーを「" + name + "」で置き換えますか？")
+    ) {
+      return;
+    }
+    members = list.slice();
+    saveMembers();
+    renderMembers();
+  }
+
+  function deleteList(name) {
+    if (!window.confirm("保存リスト「" + name + "」を削除しますか？")) return;
+    delete savedLists[name];
+    persistSaved();
+    renderSaved();
+  }
+
+  function renderSaved() {
+    var names = Object.keys(savedLists);
+    savedListEl.innerHTML = "";
+    savedEmpty.hidden = names.length > 0;
+
+    names.forEach(function (name) {
+      var li = document.createElement("li");
+
+      var nameEl = document.createElement("span");
+      nameEl.className = "saved-name";
+      nameEl.textContent = name;
+
+      var metaEl = document.createElement("span");
+      metaEl.className = "saved-meta";
+      metaEl.textContent = savedLists[name].length + "人";
+
+      var loadBtn = document.createElement("button");
+      loadBtn.type = "button";
+      loadBtn.className = "btn btn-primary";
+      loadBtn.textContent = "呼び出す";
+      loadBtn.addEventListener("click", function () { loadList(name); });
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn btn-text";
+      delBtn.textContent = "削除";
+      delBtn.addEventListener("click", function () { deleteList(name); });
+
+      li.appendChild(nameEl);
+      li.appendChild(metaEl);
+      li.appendChild(loadBtn);
+      li.appendChild(delBtn);
+      savedListEl.appendChild(li);
+    });
   }
 
   // ---- 描画 ----
@@ -197,6 +300,12 @@
     }
   });
 
+  saveForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    saveCurrentAsList(saveNameInput.value);
+    saveNameInput.value = "";
+  });
+
   clearBtn.addEventListener("click", clearMembers);
   divideBtn.addEventListener("click", divide);
   reshuffleBtn.addEventListener("click", reshuffle);
@@ -206,5 +315,6 @@
 
   // ---- 初期化 ----
   renderMembers();
+  renderSaved();
   updateUnit();
 })();
