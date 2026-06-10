@@ -226,6 +226,24 @@ input:focus {
   font-size: 0.85rem;
 }
 
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 14px;
+}
+
+.role-tag {
+  display: inline-block;
+  background: var(--secondary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: 0.8rem;
+  margin-left: 4px;
+}
+
 .mode-row {
   display: flex;
   gap: 20px;

@@ -3,10 +3,13 @@
 
   var STORAGE_KEY = "team-division-members";
   var SAVED_KEY = "team-division-saved";
+  var ROLES_KEY = "team-division-roles";
+  var DEFAULT_ROLES = ["書記", "発表", "司会", "タイムキーパー"];
 
   // ---- 状態 ----
   var members = loadMembers();
   var savedLists = loadSaved(); // { 名前: [メンバー...] }
+  var roles = loadRoles(); // 役割名の配列
   var lastDivision = null; // 再シャッフル用に直近の設定を保持
 
   // ---- DOM ----
@@ -27,6 +30,11 @@
   var saveNameInput = document.getElementById("save-name");
   var savedListEl = document.getElementById("saved-list");
   var savedEmpty = document.getElementById("saved-empty");
+  var roleForm = document.getElementById("role-form");
+  var roleNameInput = document.getElementById("role-name");
+  var roleListEl = document.getElementById("role-list");
+  var roleEmpty = document.getElementById("role-empty");
+  var roleEnabled = document.getElementById("role-enabled");
 
   // ---- localStorage ----
   function loadMembers() {
@@ -60,6 +68,25 @@
   function persistSaved() {
     try {
       localStorage.setItem(SAVED_KEY, JSON.stringify(savedLists));
+    } catch (e) {
+      /* 保存失敗は無視 */
+    }
+  }
+
+  function loadRoles() {
+    try {
+      var raw = localStorage.getItem(ROLES_KEY);
+      if (raw === null) return DEFAULT_ROLES.slice(); // 初回はデフォルト役割
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : DEFAULT_ROLES.slice();
+    } catch (e) {
+      return DEFAULT_ROLES.slice();
+    }
+  }
+
+  function saveRoles() {
+    try {
+      localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
     } catch (e) {
       /* 保存失敗は無視 */
     }
@@ -173,6 +200,55 @@
     });
   }
 
+  // ---- 役割 ----
+  function addRole(name) {
+    name = name.trim();
+    if (!name) return;
+    if (roles.indexOf(name) !== -1) return; // 重複は無視
+    roles.push(name);
+    saveRoles();
+    renderRoles();
+  }
+
+  function removeRole(index) {
+    roles.splice(index, 1);
+    saveRoles();
+    renderRoles();
+  }
+
+  function renderRoles() {
+    roleListEl.innerHTML = "";
+    roleEmpty.hidden = roles.length > 0;
+
+    roles.forEach(function (name, i) {
+      var li = document.createElement("li");
+      var span = document.createElement("span");
+      span.textContent = name;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "remove";
+      btn.textContent = "×";
+      btn.setAttribute("aria-label", name + " を削除");
+      btn.addEventListener("click", function () { removeRole(i); });
+      li.appendChild(span);
+      li.appendChild(btn);
+      roleListEl.appendChild(li);
+    });
+  }
+
+  // 各メンバーへ役割を割り当てる。役割数がメンバー数より多い場合は兼任。
+  function assignRoles(teamMembers) {
+    var assignment = teamMembers.map(function () { return []; });
+    if (!roleEnabled.checked || roles.length === 0 || teamMembers.length === 0) {
+      return assignment;
+    }
+    var shuffledRoles = shuffle(roles);
+    shuffledRoles.forEach(function (role, i) {
+      assignment[i % teamMembers.length].push(role);
+    });
+    return assignment;
+  }
+
   // ---- 描画 ----
   function renderMembers() {
     listEl.innerHTML = "";
@@ -273,10 +349,17 @@
       title.appendChild(nameSpan);
       title.appendChild(countSpan);
 
+      var assignment = assignRoles(team);
       var ol = document.createElement("ol");
-      team.forEach(function (name) {
+      team.forEach(function (name, idx) {
         var li = document.createElement("li");
-        li.textContent = name;
+        li.appendChild(document.createTextNode(name));
+        if (assignment[idx].length > 0) {
+          var tag = document.createElement("span");
+          tag.className = "role-tag";
+          tag.textContent = assignment[idx].join(" / ");
+          li.appendChild(tag);
+        }
         ol.appendChild(li);
       });
 
@@ -306,6 +389,13 @@
     saveNameInput.value = "";
   });
 
+  roleForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    addRole(roleNameInput.value);
+    roleNameInput.value = "";
+    roleNameInput.focus();
+  });
+
   clearBtn.addEventListener("click", clearMembers);
   divideBtn.addEventListener("click", divide);
   reshuffleBtn.addEventListener("click", reshuffle);
@@ -316,5 +406,6 @@
   // ---- 初期化 ----
   renderMembers();
   renderSaved();
+  renderRoles();
   updateUnit();
 })();

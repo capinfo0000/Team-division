@@ -42,9 +42,25 @@
       </div>
     </section>
 
+    <!-- 役割設定 -->
+    <section class="card">
+      <h2>2. 役割（任意）</h2>
+      <label class="checkbox-row">
+        <input type="checkbox" id="role-enabled" checked>
+        各チームに役割をランダムで割り当てる
+      </label>
+      <form id="role-form" class="input-row">
+        <input type="text" id="role-name" placeholder="役割名（例: 書記）" autocomplete="off" maxlength="20">
+        <button type="submit" class="btn btn-primary">追加</button>
+      </form>
+      <ul id="role-list" class="member-list"></ul>
+      <p id="role-empty" class="empty-message">役割がありません。上から追加してください。</p>
+      <p class="hint">人数が役割より少ないチームでは、1人が複数の役割を兼任します。</p>
+    </section>
+
     <!-- チーム分け設定 -->
     <section class="card">
-      <h2>2. チーム分け設定</h2>
+      <h2>3. チーム分け設定</h2>
       <div class="mode-row">
         <label class="radio">
           <input type="radio" name="mode" value="perTeam" checked>
@@ -66,7 +82,7 @@
     <!-- 結果 -->
     <section class="card" id="result-card" hidden>
       <div class="result-header">
-        <h2>3. チーム分け結果</h2>
+        <h2>4. チーム分け結果</h2>
         <button type="button" id="reshuffle-btn" class="btn btn-secondary">🔀 再シャッフル</button>
       </div>
       <div id="result" class="teams"></div>
