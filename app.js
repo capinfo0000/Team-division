@@ -436,10 +436,11 @@
     if (useRoles && roles.length > 0) {
       membersByTeam.forEach(function (members) {
         if (members.length === 0) return;
+        // メンバーの並びもシャッフル → 兼任や「役割なし」が誰になるかもランダムに
+        var shuffledMembers = shuffle(members);
         var shuffledRoles = shuffle(roles);
-        // 役割数 > 人数なら兼任、人数 > 役割数なら一部は役割なし
         shuffledRoles.forEach(function (role, k) {
-          roleOf[members[k % members.length]].push(role);
+          roleOf[shuffledMembers[k % shuffledMembers.length]].push(role);
         });
       });
     }
