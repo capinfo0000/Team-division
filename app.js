@@ -462,9 +462,14 @@
     var ticks = 0;
     var total = 26; // 切り替え回数
     function tick() {
-      reelTeamEl.textContent = teamName(Math.floor(Math.random() * rTeamCount));
-      if (rMode === "person" && rUseRoles && roles.length > 0) {
-        reelRoleEl.textContent = roles[Math.floor(Math.random() * roles.length)];
+      if (rMode === "team") {
+        // チーム名ではなくメンバー名をシャッフル表示（ルーレット感）
+        reelTeamEl.textContent = rLabels[Math.floor(Math.random() * rLabels.length)];
+      } else {
+        reelTeamEl.textContent = teamName(Math.floor(Math.random() * rTeamCount));
+        if (rUseRoles && roles.length > 0) {
+          reelRoleEl.textContent = roles[Math.floor(Math.random() * roles.length)];
+        }
       }
       ticks++;
       if (ticks < total) {
@@ -495,11 +500,25 @@
     nextBtn.hidden = false;
   }
 
+  // チーム t のメンバー番号一覧。役割を持つ人を上に並べる
+  function teamMemberIndices(t) {
+    var withRole = [];
+    var without = [];
+    for (var p = 0; p < rLabels.length; p++) {
+      if (rAssignments[p].teamIndex !== t) continue;
+      if (rUseRoles && rAssignments[p].roles.length > 0) {
+        withRole.push(p);
+      } else {
+        without.push(p);
+      }
+    }
+    return withRole.concat(without);
+  }
+
   // チーム t のメンバー一覧をリール下に表示（team モード）
   function showTeamList(t) {
     reelListEl.innerHTML = "";
-    for (var p = 0; p < rLabels.length; p++) {
-      if (rAssignments[p].teamIndex !== t) continue;
+    teamMemberIndices(t).forEach(function (p) {
       var li = document.createElement("li");
       var nameSpan = document.createElement("span");
       nameSpan.textContent = rLabels[p];
@@ -512,7 +531,7 @@
         li.appendChild(tag);
       }
       reelListEl.appendChild(li);
-    }
+    });
     reelListEl.hidden = false;
   }
 
@@ -532,10 +551,7 @@
     summaryEl.innerHTML = "";
 
     for (var t = 0; t < rTeamCount; t++) {
-      var teamMembers = [];
-      for (var p = 0; p < rLabels.length; p++) {
-        if (rAssignments[p].teamIndex === t) teamMembers.push(p);
-      }
+      var teamMembers = teamMemberIndices(t);
 
       var div = document.createElement("div");
       div.className = "team";
