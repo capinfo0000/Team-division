@@ -25,6 +25,10 @@
   var saveNameInput = document.getElementById("save-name");
   var savedListEl = document.getElementById("saved-list");
   var savedEmpty = document.getElementById("saved-empty");
+  var savedModal = document.getElementById("saved-modal");
+  var openSavedBtn = document.getElementById("open-saved");
+  var savedCloseBtn = document.getElementById("saved-close");
+  var savedBackdrop = document.getElementById("saved-backdrop");
   var roleForm = document.getElementById("role-form");
   var roleNameInput = document.getElementById("role-name");
   var roleListEl = document.getElementById("role-list");
@@ -188,6 +192,7 @@
     members = list.slice();
     saveMembers();
     renderMembers();
+    savedModal.hidden = true; // 呼び出したらポップアップを閉じる
   }
 
   function deleteList(name) {
@@ -675,6 +680,10 @@
     roleNameInput.value = "";
     roleNameInput.focus();
   });
+
+  openSavedBtn.addEventListener("click", function () { savedModal.hidden = false; });
+  savedCloseBtn.addEventListener("click", function () { savedModal.hidden = true; });
+  savedBackdrop.addEventListener("click", function () { savedModal.hidden = true; });
 
   clearBtn.addEventListener("click", clearMembers);
   modeRadios.forEach(function (r) {

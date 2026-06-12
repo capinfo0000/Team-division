@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <div class="container">
@@ -65,6 +65,7 @@
         <form id="member-form" class="input-row">
           <input type="text" id="member-name" placeholder="名前を入力" autocomplete="off" maxlength="30">
           <button type="submit" class="btn btn-primary">追加</button>
+          <button type="button" id="open-saved" class="btn btn-secondary">📂 保存リスト</button>
         </form>
         <p class="hint">複数まとめて追加する場合は、改行・カンマ・スペース区切りでも入力できます。</p>
 
@@ -74,18 +75,6 @@
         </div>
         <ul id="member-list" class="member-list"></ul>
         <p id="empty-message" class="empty-message">まだメンバーがいません。上から追加してください。</p>
-
-        <!-- 保存リスト（使い回し） -->
-        <div class="saved-block">
-          <h3>保存リスト</h3>
-          <p class="hint">今のメンバーに名前を付けて保存しておくと、いつでも呼び出して使い回せます。</p>
-          <form id="save-form" class="input-row">
-            <input type="text" id="save-name" placeholder="リスト名（例: 〇〇チーム）" autocomplete="off" maxlength="30">
-            <button type="submit" class="btn btn-secondary">現在のメンバーを保存</button>
-          </form>
-          <ul id="saved-list" class="saved-list"></ul>
-          <p id="saved-empty" class="empty-message">保存されたリストはありません。</p>
-        </div>
       </section>
 
       <!-- 役割設定 -->
@@ -156,9 +145,27 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 19</p>
+    <p class="ver">ver. 20</p>
   </div>
 
-  <script src="app.js?v=19"></script>
+  <!-- 保存リスト（ポップアップ） -->
+  <div id="saved-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="saved-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>📂 保存リスト</h3>
+        <button type="button" id="saved-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <p class="hint">今のメンバーに名前を付けて保存しておくと、いつでも呼び出して使い回せます。</p>
+      <form id="save-form" class="input-row">
+        <input type="text" id="save-name" placeholder="リスト名（例: 〇〇チーム）" autocomplete="off" maxlength="30">
+        <button type="submit" class="btn btn-secondary">現在のメンバーを保存</button>
+      </form>
+      <ul id="saved-list" class="saved-list"></ul>
+      <p id="saved-empty" class="empty-message">保存されたリストはありません。</p>
+    </div>
+  </div>
+
+  <script src="app.js?v=20"></script>
 </body>
 </html>
