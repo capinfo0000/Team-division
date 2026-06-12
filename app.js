@@ -10,7 +10,6 @@
   var members = loadMembers();
   var savedLists = loadSaved(); // { 名前: [メンバー...] }
   var roles = loadRoles(); // 役割名の配列
-  var lastDivision = null; // 再シャッフル用に直近の設定を保持
 
   // ---- DOM ----
   var form = document.getElementById("member-form");
@@ -21,10 +20,6 @@
   var clearBtn = document.getElementById("clear-members");
   var sizeInput = document.getElementById("size-input");
   var sizeUnit = document.getElementById("size-unit");
-  var divideBtn = document.getElementById("divide-btn");
-  var resultCard = document.getElementById("result-card");
-  var resultEl = document.getElementById("result");
-  var reshuffleBtn = document.getElementById("reshuffle-btn");
   var modeRadios = document.querySelectorAll('input[name="mode"]');
   var saveForm = document.getElementById("save-form");
   var saveNameInput = document.getElementById("save-name");
@@ -276,19 +271,6 @@
     if (roleEmpty) roleEmpty.hidden = roles.length > 0;
   }
 
-  // 各メンバーへ役割を割り当てる。役割数がメンバー数より多い場合は兼任。
-  function assignRoles(teamMembers) {
-    var assignment = teamMembers.map(function () { return []; });
-    if (!roleEnabled.checked || roles.length === 0 || teamMembers.length === 0) {
-      return assignment;
-    }
-    var shuffledRoles = shuffle(roles);
-    shuffledRoles.forEach(function (role, i) {
-      assignment[i % teamMembers.length].push(role);
-    });
-    return assignment;
-  }
-
   // ---- 描画 ----
   function renderMembers() {
     listEl.innerHTML = "";
@@ -330,86 +312,6 @@
       a[j] = tmp;
     }
     return a;
-  }
-
-  // 指定したチーム数に、できるだけ均等に振り分ける
-  function splitIntoTeams(names, teamCount) {
-    var shuffled = shuffle(names);
-    var teams = [];
-    for (var i = 0; i < teamCount; i++) teams.push([]);
-    // 1人ずつ順番に配ることで人数差を最大1人に抑える
-    shuffled.forEach(function (name, i) {
-      teams[i % teamCount].push(name);
-    });
-    return teams;
-  }
-
-  function divide() {
-    if (members.length === 0) {
-      window.alert("先にメンバーを登録してください。");
-      return;
-    }
-
-    var value = parseInt(sizeInput.value, 10);
-    if (isNaN(value) || value < 1) {
-      window.alert("1以上の数値を入力してください。");
-      return;
-    }
-
-    var mode = getMode();
-    var teamCount;
-    if (mode === "perTeam") {
-      teamCount = Math.ceil(members.length / value);
-    } else {
-      teamCount = Math.min(value, members.length);
-    }
-
-    lastDivision = { mode: mode, value: value, teamCount: teamCount };
-    renderTeams(splitIntoTeams(members, teamCount));
-  }
-
-  function reshuffle() {
-    if (!lastDivision) return;
-    renderTeams(splitIntoTeams(members, lastDivision.teamCount));
-  }
-
-  function renderTeams(teams) {
-    resultEl.innerHTML = "";
-    teams.forEach(function (team, i) {
-      var div = document.createElement("div");
-      div.className = "team";
-
-      var title = document.createElement("div");
-      title.className = "team-title";
-      var nameSpan = document.createElement("span");
-      nameSpan.textContent = "チーム " + (i + 1);
-      var countSpan = document.createElement("span");
-      countSpan.className = "count";
-      countSpan.textContent = team.length + "人";
-      title.appendChild(nameSpan);
-      title.appendChild(countSpan);
-
-      var assignment = assignRoles(team);
-      var ol = document.createElement("ol");
-      team.forEach(function (name, idx) {
-        var li = document.createElement("li");
-        li.appendChild(document.createTextNode(name));
-        if (assignment[idx].length > 0) {
-          var tag = document.createElement("span");
-          tag.className = "role-tag";
-          tag.textContent = assignment[idx].join(" / ");
-          li.appendChild(tag);
-        }
-        ol.appendChild(li);
-      });
-
-      div.appendChild(title);
-      div.appendChild(ol);
-      resultEl.appendChild(div);
-    });
-
-    resultCard.hidden = false;
-    resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   // ---- ルーレット抽選 ----
@@ -674,8 +576,6 @@
   });
 
   clearBtn.addEventListener("click", clearMembers);
-  divideBtn.addEventListener("click", divide);
-  reshuffleBtn.addEventListener("click", reshuffle);
   modeRadios.forEach(function (r) {
     r.addEventListener("change", updateUnit);
   });

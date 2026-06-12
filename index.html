@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <div class="container">
@@ -117,20 +117,10 @@
         <div class="input-row">
           <input type="number" id="size-input" min="1" value="2">
           <span id="size-unit" class="unit">人 / チーム</span>
-          <button type="button" id="divide-btn" class="btn btn-primary">チーム分けする</button>
         </div>
         <p class="hint">割り切れない場合は、できるだけ均等になるように振り分けます。</p>
         <button type="button" id="list-start" class="btn btn-big btn-primary">🎰 ルーレットでスタート</button>
-        <p class="hint">「ルーレットでスタート」は、登録メンバーを1人ずつ演出表示してチーム・役割を発表します。</p>
-      </section>
-
-      <!-- 結果 -->
-      <section class="card" id="result-card" hidden>
-        <div class="result-header">
-          <h2>4. チーム分け結果</h2>
-          <button type="button" id="reshuffle-btn" class="btn btn-secondary">🔀 再シャッフル</button>
-        </div>
-        <div id="result" class="teams"></div>
+        <p class="hint">登録メンバーを1人ずつ演出表示してチーム・役割を発表します。</p>
       </section>
     </div>
 
@@ -160,6 +150,6 @@
     </section>
   </div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
