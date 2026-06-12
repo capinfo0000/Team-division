@@ -379,6 +379,13 @@ input:focus {
   justify-content: center;
 }
 
+.ver {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin: 24px 0 0;
+}
+
 .role-tag {
   display: inline-block;
   background: var(--secondary);
