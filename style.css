@@ -234,6 +234,122 @@ input:focus {
   margin-bottom: 14px;
 }
 
+/* ---- タブ ---- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.tab {
+  flex: 1;
+  padding: 12px 10px;
+  border: 1px solid var(--border);
+  background: #eef1f8;
+  color: var(--muted);
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tab.active {
+  background: var(--card);
+  color: var(--primary);
+  border-bottom-color: var(--card);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* ---- 設定フィールド ---- */
+.field-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.field input[type="number"] {
+  flex: none;
+  width: 110px;
+  font-size: 1.2rem;
+  text-align: center;
+}
+.role-block {
+  padding: 14px 0;
+  margin: 4px 0 12px;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+}
+
+/* ---- 大きいボタン ---- */
+.btn-big {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+/* ---- ルーレット本体 ---- */
+.stage-card {
+  text-align: center;
+}
+.progress {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.person-label {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 6px 0 18px;
+}
+.reel {
+  background: linear-gradient(160deg, #1f2937, #374151);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 36px 16px;
+  margin-bottom: 20px;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+.reel-team {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+.reel-role {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 6px;
+  color: #a7f3d0;
+}
+.reel.spinning .reel-team,
+.reel.spinning .reel-role {
+  opacity: 0.55;
+  filter: blur(0.6px);
+}
+.reel.settled {
+  animation: pop 0.32s ease;
+}
+@keyframes pop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.result-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .role-tag {
   display: inline-block;
   background: var(--secondary);
