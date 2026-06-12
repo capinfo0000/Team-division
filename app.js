@@ -49,6 +49,7 @@
   var reelTeamEl = document.getElementById("r-reel-team");
   var reelRoleEl = document.getElementById("r-reel-role");
   var reelListEl = document.getElementById("r-reel-list");
+  var revealBtn = document.getElementById("r-reveal");
   var nextBtn = document.getElementById("r-next");
   var abortBtn = document.getElementById("r-abort");
   var summaryEl = document.getElementById("r-summary");
@@ -438,65 +439,115 @@
     switchTab(rReturnTab);
   }
 
-  // 1ステップを発表（person=1人 / team=1チーム）
+  // 1ステップを発表（person=1人ずつ自動 / team=ボタンで発表）
   function revealStep(s) {
     nextBtn.hidden = true;
+    revealBtn.hidden = true;
     reelListEl.hidden = true;
     reelListEl.innerHTML = "";
+    reelListEl.classList.remove("shuffling");
     reelEl.classList.remove("settled");
+
     if (rMode === "team") {
+      // チームごと：発表ボタンを出して待機（自動では回さない）
       progressEl.textContent = rTeamCount + "チーム中 " + (s + 1) + "チーム目";
-      personEl.textContent = "どのチーム？";
+      personEl.textContent = "";
+      reelEl.hidden = true;
+      revealBtn.textContent = teamName(s) + "の発表はこちら ▶";
+      revealBtn.hidden = false;
     } else {
+      // 1人ずつ：自動でルーレット
       progressEl.textContent = rTotal + "人中 " + (s + 1) + "人目";
       personEl.textContent = rLabels[s];
+      reelEl.hidden = false;
+      spinPerson(s);
     }
-    spin(s);
   }
 
-  function spin(s) {
+  // 発表ボタン（team モード）を押したらリスト内でメンバー名をシャッフル
+  function onReveal() {
+    if (spinning) return;
+    revealBtn.hidden = true;
+    spinTeam(rCurrent);
+  }
+
+  function spinPerson(s) {
     spinning = true;
     reelEl.classList.add("spinning");
     reelEl.classList.remove("settled");
 
     var ticks = 0;
-    var total = 26; // 切り替え回数
+    var total = 26;
     function tick() {
-      if (rMode === "team") {
-        // チーム名ではなくメンバー名をシャッフル表示（ルーレット感）
-        reelTeamEl.textContent = rLabels[Math.floor(Math.random() * rLabels.length)];
-      } else {
-        reelTeamEl.textContent = teamName(Math.floor(Math.random() * rTeamCount));
-        if (rUseRoles && roles.length > 0) {
-          reelRoleEl.textContent = roles[Math.floor(Math.random() * roles.length)];
-        }
+      reelTeamEl.textContent = teamName(Math.floor(Math.random() * rTeamCount));
+      if (rUseRoles && roles.length > 0) {
+        reelRoleEl.textContent = roles[Math.floor(Math.random() * roles.length)];
       }
       ticks++;
       if (ticks < total) {
-        // 終盤はだんだん遅くする
-        var delay = 45 + Math.pow(ticks / total, 3) * 260;
-        setTimeout(tick, delay);
+        setTimeout(tick, 45 + Math.pow(ticks / total, 3) * 260);
       } else {
-        settle(s);
+        var a = rAssignments[s];
+        reelTeamEl.textContent = teamName(a.teamIndex);
+        reelRoleEl.textContent = roleLabel(a.roles);
+        reelEl.classList.remove("spinning");
+        reelEl.classList.add("settled");
+        spinning = false;
+        nextBtn.textContent = s === rTotal - 1 ? "結果を見る ▶" : "次の人へ ▶";
+        nextBtn.hidden = false;
       }
     }
     tick();
   }
 
-  function settle(s) {
-    reelEl.classList.remove("spinning");
-    reelEl.classList.add("settled");
-    spinning = false;
-    if (rMode === "team") {
-      reelTeamEl.textContent = teamName(s);
-      showTeamList(s);
-      nextBtn.textContent = s === rTotal - 1 ? "結果を見る ▶" : "次のチームへ ▶";
-    } else {
-      var a = rAssignments[s];
-      reelTeamEl.textContent = teamName(a.teamIndex);
-      reelRoleEl.textContent = roleLabel(a.roles);
-      nextBtn.textContent = s === rTotal - 1 ? "結果を見る ▶" : "次の人へ ▶";
+  // チーム t のメンバー枠を作り、いろんなメンバー名がシャッフルする演出 → 確定
+  function spinTeam(t) {
+    spinning = true;
+    var idxs = teamMemberIndices(t); // 確定メンバー（役割の人が上）
+    var rows = [];
+    reelListEl.innerHTML = "";
+    idxs.forEach(function () {
+      var li = document.createElement("li");
+      var nameSpan = document.createElement("span");
+      li.appendChild(nameSpan);
+      reelListEl.appendChild(li);
+      rows.push({ li: li, name: nameSpan });
+    });
+    reelListEl.hidden = false;
+    reelListEl.classList.add("shuffling");
+
+    var ticks = 0;
+    var total = 24;
+    function tick() {
+      rows.forEach(function (r) {
+        r.name.textContent = rLabels[Math.floor(Math.random() * rLabels.length)];
+      });
+      ticks++;
+      if (ticks < total) {
+        setTimeout(tick, 50 + Math.pow(ticks / total, 3) * 240);
+      } else {
+        settleTeam(t, idxs, rows);
+      }
     }
+    tick();
+  }
+
+  function settleTeam(t, idxs, rows) {
+    reelListEl.classList.remove("shuffling");
+    rows.forEach(function (r, i) {
+      var p = idxs[i];
+      r.name.textContent = rLabels[p];
+      var label = roleLabel(rAssignments[p].roles);
+      if (label) {
+        var tag = document.createElement("span");
+        tag.className = "role-tag";
+        tag.textContent = label;
+        r.li.appendChild(tag);
+      }
+    });
+    personEl.textContent = teamName(t);
+    spinning = false;
+    nextBtn.textContent = t === rTotal - 1 ? "結果を見る ▶" : "次のチームへ ▶";
     nextBtn.hidden = false;
   }
 
@@ -513,26 +564,6 @@
       }
     }
     return withRole.concat(without);
-  }
-
-  // チーム t のメンバー一覧をリール下に表示（team モード）
-  function showTeamList(t) {
-    reelListEl.innerHTML = "";
-    teamMemberIndices(t).forEach(function (p) {
-      var li = document.createElement("li");
-      var nameSpan = document.createElement("span");
-      nameSpan.textContent = rLabels[p];
-      li.appendChild(nameSpan);
-      var label = roleLabel(rAssignments[p].roles);
-      if (label) {
-        var tag = document.createElement("span");
-        tag.className = "role-tag";
-        tag.textContent = label;
-        li.appendChild(tag);
-      }
-      reelListEl.appendChild(li);
-    });
-    reelListEl.hidden = false;
   }
 
   function nextStep() {
@@ -610,6 +641,7 @@
 
   rStartBtn.addEventListener("click", startRoulette);
   listStartBtn.addEventListener("click", startListRoulette);
+  revealBtn.addEventListener("click", onReveal);
   nextBtn.addEventListener("click", nextStep);
   abortBtn.addEventListener("click", exitStage);
   againBtn.addEventListener("click", function () {

@@ -374,6 +374,10 @@ input:focus {
 .reel-list li .role-tag {
   margin-left: 0;
 }
+.reel-list.shuffling li {
+  color: var(--muted);
+  justify-content: center;
+}
 
 .role-tag {
   display: inline-block;
