@@ -451,7 +451,7 @@
     if (rMode === "team") {
       // チームごと：発表ボタンを出して待機（自動では回さない）
       progressEl.textContent = rTeamCount + "チーム中 " + (s + 1) + "チーム目";
-      personEl.textContent = "";
+      personEl.textContent = teamName(s); // 「Aチーム」を表題として表示
       reelEl.hidden = true;
       revealBtn.textContent = teamName(s) + "の発表はこちら ▶";
       revealBtn.hidden = false;
