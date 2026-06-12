@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
   <div class="container">
@@ -132,6 +132,9 @@
       <div class="progress" id="r-progress">6人中 1人目</div>
       <div class="person-label" id="r-person">1番目の人</div>
 
+      <button type="button" id="r-reveal" class="btn btn-big btn-primary" hidden>発表！</button>
+      <button type="button" id="r-next" class="btn btn-big btn-secondary" hidden>次の人へ ▶</button>
+
       <div class="reel" id="r-reel">
         <div class="reel-team" id="r-reel-team">？</div>
         <div class="reel-role" id="r-reel-role">？</div>
@@ -139,8 +142,6 @@
 
       <ol class="reel-list" id="r-reel-list" hidden></ol>
 
-      <button type="button" id="r-reveal" class="btn btn-big btn-primary" hidden>発表！</button>
-      <button type="button" id="r-next" class="btn btn-big btn-secondary" hidden>次の人へ ▶</button>
       <button type="button" id="r-abort" class="btn btn-text">中止して設定に戻る</button>
     </section>
 
@@ -155,9 +156,9 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 16</p>
+    <p class="ver">ver. 17</p>
   </div>
 
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>
