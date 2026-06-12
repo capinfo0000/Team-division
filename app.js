@@ -48,6 +48,7 @@
   var reelEl = document.getElementById("r-reel");
   var reelTeamEl = document.getElementById("r-reel-team");
   var reelRoleEl = document.getElementById("r-reel-role");
+  var reelListEl = document.getElementById("r-reel-list");
   var nextBtn = document.getElementById("r-next");
   var abortBtn = document.getElementById("r-abort");
   var summaryEl = document.getElementById("r-summary");
@@ -57,12 +58,13 @@
   var listStartBtn = document.getElementById("list-start");
 
   // ---- 状態（ルーレット）----
+  var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
   var rAssignments = [];
   var rLabels = [];        // 各参加者の表示名（名前 or 「N番目の人」）
   var rReturnTab = "roulette"; // 終了時に戻るタブ
   var rCurrent = 0;
   var rTeamCount = 0;
-  var rTotal = 0;
+  var rTotal = 0;          // 発表ステップ数（person=人数 / team=チーム数）
   var rUseRoles = false;
   var spinning = false;
 
@@ -299,7 +301,7 @@
   }
 
   function updateUnit() {
-    sizeUnit.textContent = getMode() === "perTeam" ? "人 / チーム" : "チーム";
+    sizeUnit.textContent = getMode() === "perTeam" ? "人" : "チーム";
   }
 
   // ---- チーム分けロジック ----
@@ -358,26 +360,29 @@
     return result;
   }
 
-  // 共通の開始処理：参加者ラベル・チーム数・役割有無・戻り先タブを受け取る
-  function beginRoulette(labels, teamCount, useRoles, returnTab) {
-    rLabels = labels;
-    rTotal = labels.length;
-    rTeamCount = teamCount;
-    rUseRoles = useRoles;
-    rAssignments = computeAssignments(rTotal, teamCount, useRoles);
+  // 共通の開始処理。opts: {mode, labels, teamCount, useRoles, returnTab}
+  function beginRoulette(opts) {
+    rMode = opts.mode; // "person" or "team"
+    rLabels = opts.labels;
+    rTeamCount = opts.teamCount;
+    rUseRoles = opts.useRoles;
+    rReturnTab = opts.returnTab;
+    rAssignments = computeAssignments(rLabels.length, rTeamCount, rUseRoles);
+    rTotal = rMode === "team" ? rTeamCount : rLabels.length;
     rCurrent = 0;
-    rReturnTab = returnTab;
 
-    reelRoleEl.style.display = useRoles && roles.length > 0 ? "block" : "none";
+    // person モードのみリールに役割を出す（team モードは一覧側に表示）
+    reelRoleEl.style.display =
+      rMode === "person" && rUseRoles && roles.length > 0 ? "block" : "none";
     tabsBar.hidden = true;
     document.getElementById("tab-roulette").hidden = true;
     document.getElementById("tab-list").hidden = true;
     summaryCard.hidden = true;
     stageCard.hidden = false;
-    revealPerson(0);
+    revealStep(0);
   }
 
-  // ルーレット抽選タブ：人数指定
+  // ルーレット抽選タブ：人数指定 → 1人ずつ発表
   function startRoulette() {
     var count = parseInt(rCountInput.value, 10);
     var teams = parseInt(rTeamsInput.value, 10);
@@ -393,10 +398,16 @@
 
     var labels = [];
     for (var i = 0; i < count; i++) labels.push((i + 1) + "番目の人");
-    beginRoulette(labels, teams, rRoleEnabled.checked, "roulette");
+    beginRoulette({
+      mode: "person",
+      labels: labels,
+      teamCount: teams,
+      useRoles: rRoleEnabled.checked,
+      returnTab: "roulette"
+    });
   }
 
-  // リストで分けるタブ：登録メンバーで開始
+  // リストで分けるタブ：登録メンバーで開始 → チームごとに発表
   function startListRoulette() {
     if (members.length === 0) {
       window.alert("先にメンバーを登録してください。");
@@ -411,7 +422,13 @@
     var teamCount = mode === "perTeam"
       ? Math.ceil(members.length / value)
       : Math.min(value, members.length);
-    beginRoulette(members.slice(), teamCount, roleEnabled.checked, "list");
+    beginRoulette({
+      mode: "team",
+      labels: members.slice(),
+      teamCount: teamCount,
+      useRoles: roleEnabled.checked,
+      returnTab: "list"
+    });
   }
 
   function exitStage() {
@@ -421,14 +438,23 @@
     switchTab(rReturnTab);
   }
 
-  function revealPerson(p) {
-    progressEl.textContent = rTotal + "人中 " + (p + 1) + "人目";
-    personEl.textContent = rLabels[p];
+  // 1ステップを発表（person=1人 / team=1チーム）
+  function revealStep(s) {
     nextBtn.hidden = true;
-    spin(p);
+    reelListEl.hidden = true;
+    reelListEl.innerHTML = "";
+    reelEl.classList.remove("settled");
+    if (rMode === "team") {
+      progressEl.textContent = rTeamCount + "チーム中 " + (s + 1) + "チーム目";
+      personEl.textContent = "どのチーム？";
+    } else {
+      progressEl.textContent = rTotal + "人中 " + (s + 1) + "人目";
+      personEl.textContent = rLabels[s];
+    }
+    spin(s);
   }
 
-  function spin(p) {
+  function spin(s) {
     spinning = true;
     reelEl.classList.add("spinning");
     reelEl.classList.remove("settled");
@@ -437,7 +463,7 @@
     var total = 26; // 切り替え回数
     function tick() {
       reelTeamEl.textContent = teamName(Math.floor(Math.random() * rTeamCount));
-      if (rUseRoles && roles.length > 0) {
+      if (rMode === "person" && rUseRoles && roles.length > 0) {
         reelRoleEl.textContent = roles[Math.floor(Math.random() * roles.length)];
       }
       ticks++;
@@ -446,28 +472,55 @@
         var delay = 45 + Math.pow(ticks / total, 3) * 260;
         setTimeout(tick, delay);
       } else {
-        settle(p);
+        settle(s);
       }
     }
     tick();
   }
 
-  function settle(p) {
-    var a = rAssignments[p];
-    reelTeamEl.textContent = teamName(a.teamIndex);
-    reelRoleEl.textContent = roleLabel(a.roles);
+  function settle(s) {
     reelEl.classList.remove("spinning");
     reelEl.classList.add("settled");
     spinning = false;
-    nextBtn.textContent = p === rTotal - 1 ? "結果を見る ▶" : "次の人へ ▶";
+    if (rMode === "team") {
+      reelTeamEl.textContent = teamName(s);
+      showTeamList(s);
+      nextBtn.textContent = s === rTotal - 1 ? "結果を見る ▶" : "次のチームへ ▶";
+    } else {
+      var a = rAssignments[s];
+      reelTeamEl.textContent = teamName(a.teamIndex);
+      reelRoleEl.textContent = roleLabel(a.roles);
+      nextBtn.textContent = s === rTotal - 1 ? "結果を見る ▶" : "次の人へ ▶";
+    }
     nextBtn.hidden = false;
   }
 
-  function nextPerson() {
+  // チーム t のメンバー一覧をリール下に表示（team モード）
+  function showTeamList(t) {
+    reelListEl.innerHTML = "";
+    for (var p = 0; p < rLabels.length; p++) {
+      if (rAssignments[p].teamIndex !== t) continue;
+      var li = document.createElement("li");
+      var nameSpan = document.createElement("span");
+      nameSpan.textContent = rLabels[p];
+      li.appendChild(nameSpan);
+      var label = roleLabel(rAssignments[p].roles);
+      if (label) {
+        var tag = document.createElement("span");
+        tag.className = "role-tag";
+        tag.textContent = label;
+        li.appendChild(tag);
+      }
+      reelListEl.appendChild(li);
+    }
+    reelListEl.hidden = false;
+  }
+
+  function nextStep() {
     if (spinning) return;
     rCurrent++;
     if (rCurrent < rTotal) {
-      revealPerson(rCurrent);
+      revealStep(rCurrent);
     } else {
       showSummary();
     }
@@ -479,9 +532,9 @@
     summaryEl.innerHTML = "";
 
     for (var t = 0; t < rTeamCount; t++) {
-      var members = [];
-      for (var p = 0; p < rTotal; p++) {
-        if (rAssignments[p].teamIndex === t) members.push(p);
+      var teamMembers = [];
+      for (var p = 0; p < rLabels.length; p++) {
+        if (rAssignments[p].teamIndex === t) teamMembers.push(p);
       }
 
       var div = document.createElement("div");
@@ -493,12 +546,12 @@
       nameSpan.textContent = teamName(t);
       var countSpan = document.createElement("span");
       countSpan.className = "count";
-      countSpan.textContent = members.length + "人";
+      countSpan.textContent = teamMembers.length + "人";
       title.appendChild(nameSpan);
       title.appendChild(countSpan);
 
       var ol = document.createElement("ol");
-      members.forEach(function (p) {
+      teamMembers.forEach(function (p) {
         var li = document.createElement("li");
         li.appendChild(document.createTextNode(rLabels[p]));
         var label = roleLabel(rAssignments[p].roles);
@@ -541,14 +594,14 @@
 
   rStartBtn.addEventListener("click", startRoulette);
   listStartBtn.addEventListener("click", startListRoulette);
-  nextBtn.addEventListener("click", nextPerson);
+  nextBtn.addEventListener("click", nextStep);
   abortBtn.addEventListener("click", exitStage);
   againBtn.addEventListener("click", function () {
-    rAssignments = computeAssignments(rTotal, rTeamCount, rUseRoles);
+    rAssignments = computeAssignments(rLabels.length, rTeamCount, rUseRoles);
     rCurrent = 0;
     summaryCard.hidden = true;
     stageCard.hidden = false;
-    revealPerson(0);
+    revealStep(0);
   });
   backBtn.addEventListener("click", exitStage);
 

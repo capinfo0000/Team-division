@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <div class="container">
@@ -106,21 +106,21 @@
         <h2>3. チーム分け設定</h2>
         <div class="mode-row">
           <label class="radio">
-            <input type="radio" name="mode" value="perTeam" checked>
-            1チームの人数で指定
+            <input type="radio" name="mode" value="teamCount" checked>
+            チーム数で指定
           </label>
           <label class="radio">
-            <input type="radio" name="mode" value="teamCount">
-            チーム数で指定
+            <input type="radio" name="mode" value="perTeam">
+            1チームの人数で指定
           </label>
         </div>
         <div class="input-row">
           <input type="number" id="size-input" min="1" value="2">
-          <span id="size-unit" class="unit">人 / チーム</span>
+          <span id="size-unit" class="unit">チーム</span>
         </div>
         <p class="hint">割り切れない場合は、できるだけ均等になるように振り分けます。</p>
         <button type="button" id="list-start" class="btn btn-big btn-primary">🎰 ルーレットでスタート</button>
-        <p class="hint">登録メンバーを1人ずつ演出表示してチーム・役割を発表します。</p>
+        <p class="hint">ルーレットがチーム名で回り、止まるとそのチームのメンバー一覧を表示。「次へ」でチームごとに発表します。</p>
       </section>
     </div>
 
@@ -133,6 +133,8 @@
         <div class="reel-team" id="r-reel-team">？</div>
         <div class="reel-role" id="r-reel-role">？</div>
       </div>
+
+      <ol class="reel-list" id="r-reel-list" hidden></ol>
 
       <button type="button" id="r-next" class="btn btn-big btn-secondary" hidden>次の人へ ▶</button>
       <button type="button" id="r-abort" class="btn btn-text">中止して設定に戻る</button>
@@ -150,6 +152,6 @@
     </section>
   </div>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
