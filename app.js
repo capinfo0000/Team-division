@@ -324,7 +324,7 @@
   }
 
   function roleLabel(roleArr) {
-    if (!rUseRoles) return "";
+    if (!rUseRoles || roles.length === 0) return "";
     return roleArr.length > 0 ? roleArr.join(" / ") : "役割なし";
   }
 
