@@ -58,9 +58,13 @@
   var summaryEl = document.getElementById("r-summary");
   var againBtn = document.getElementById("r-again");
   var backBtn = document.getElementById("r-back");
+  var tabsBar = document.getElementById("tabs-bar");
+  var listStartBtn = document.getElementById("list-start");
 
   // ---- 状態（ルーレット）----
   var rAssignments = [];
+  var rLabels = [];        // 各参加者の表示名（名前 or 「N番目の人」）
+  var rReturnTab = "roulette"; // 終了時に戻るタブ
   var rCurrent = 0;
   var rTeamCount = 0;
   var rTotal = 0;
@@ -452,6 +456,26 @@
     return result;
   }
 
+  // 共通の開始処理：参加者ラベル・チーム数・役割有無・戻り先タブを受け取る
+  function beginRoulette(labels, teamCount, useRoles, returnTab) {
+    rLabels = labels;
+    rTotal = labels.length;
+    rTeamCount = teamCount;
+    rUseRoles = useRoles;
+    rAssignments = computeAssignments(rTotal, teamCount, useRoles);
+    rCurrent = 0;
+    rReturnTab = returnTab;
+
+    reelRoleEl.style.display = useRoles && roles.length > 0 ? "block" : "none";
+    tabsBar.hidden = true;
+    document.getElementById("tab-roulette").hidden = true;
+    document.getElementById("tab-list").hidden = true;
+    summaryCard.hidden = true;
+    stageCard.hidden = false;
+    revealPerson(0);
+  }
+
+  // ルーレット抽選タブ：人数指定
   function startRoulette() {
     var count = parseInt(rCountInput.value, 10);
     var teams = parseInt(rTeamsInput.value, 10);
@@ -465,22 +489,39 @@
     }
     if (teams > count) teams = count; // チーム数が人数を超えないように
 
-    rUseRoles = rRoleEnabled.checked;
-    rTeamCount = teams;
-    rTotal = count;
-    rAssignments = computeAssignments(count, teams, rUseRoles);
-    rCurrent = 0;
+    var labels = [];
+    for (var i = 0; i < count; i++) labels.push((i + 1) + "番目の人");
+    beginRoulette(labels, teams, rRoleEnabled.checked, "roulette");
+  }
 
-    reelRoleEl.style.display = rUseRoles && roles.length > 0 ? "block" : "none";
-    settingsCard.hidden = true;
+  // リストで分けるタブ：登録メンバーで開始
+  function startListRoulette() {
+    if (members.length === 0) {
+      window.alert("先にメンバーを登録してください。");
+      return;
+    }
+    var value = parseInt(sizeInput.value, 10);
+    if (isNaN(value) || value < 1) {
+      window.alert("1以上の数値を入力してください。");
+      return;
+    }
+    var mode = getMode();
+    var teamCount = mode === "perTeam"
+      ? Math.ceil(members.length / value)
+      : Math.min(value, members.length);
+    beginRoulette(members.slice(), teamCount, roleEnabled.checked, "list");
+  }
+
+  function exitStage() {
+    stageCard.hidden = true;
     summaryCard.hidden = true;
-    stageCard.hidden = false;
-    revealPerson(0);
+    tabsBar.hidden = false;
+    switchTab(rReturnTab);
   }
 
   function revealPerson(p) {
     progressEl.textContent = rTotal + "人中 " + (p + 1) + "人目";
-    personEl.textContent = (p + 1) + "番目の人";
+    personEl.textContent = rLabels[p];
     nextBtn.hidden = true;
     spin(p);
   }
@@ -557,7 +598,7 @@
       var ol = document.createElement("ol");
       members.forEach(function (p) {
         var li = document.createElement("li");
-        li.appendChild(document.createTextNode((p + 1) + "番目の人"));
+        li.appendChild(document.createTextNode(rLabels[p]));
         var label = roleLabel(rAssignments[p].roles);
         if (label) {
           var tag = document.createElement("span");
@@ -597,12 +638,9 @@
   });
 
   rStartBtn.addEventListener("click", startRoulette);
+  listStartBtn.addEventListener("click", startListRoulette);
   nextBtn.addEventListener("click", nextPerson);
-  abortBtn.addEventListener("click", function () {
-    stageCard.hidden = true;
-    summaryCard.hidden = true;
-    settingsCard.hidden = false;
-  });
+  abortBtn.addEventListener("click", exitStage);
   againBtn.addEventListener("click", function () {
     rAssignments = computeAssignments(rTotal, rTeamCount, rUseRoles);
     rCurrent = 0;
@@ -610,10 +648,7 @@
     stageCard.hidden = false;
     revealPerson(0);
   });
-  backBtn.addEventListener("click", function () {
-    summaryCard.hidden = true;
-    settingsCard.hidden = false;
-  });
+  backBtn.addEventListener("click", exitStage);
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
