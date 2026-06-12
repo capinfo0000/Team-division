@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>チーム分けアプリ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎲 チーム分けアプリ</h1>
+      <p class="subtitle">メンバーを登録して、ランダムにチーム分けできます</p>
+    </header>
+
+    <!-- メンバー登録 -->
+    <section class="card">
+      <h2>1. メンバー登録</h2>
+      <form id="member-form" class="input-row">
+        <input type="text" id="member-name" placeholder="名前を入力" autocomplete="off" maxlength="30">
+        <button type="submit" class="btn btn-primary">追加</button>
+      </form>
+      <p class="hint">複数まとめて追加する場合は、改行・カンマ・スペース区切りでも入力できます。</p>
+
+      <div class="member-header">
+        <span id="member-count" class="badge">0人</span>
+        <button type="button" id="clear-members" class="btn btn-text">全て削除</button>
+      </div>
+      <ul id="member-list" class="member-list"></ul>
+      <p id="empty-message" class="empty-message">まだメンバーがいません。上から追加してください。</p>
+
+      <!-- 保存リスト（使い回し） -->
+      <div class="saved-block">
+        <h3>保存リスト</h3>
+        <p class="hint">今のメンバーに名前を付けて保存しておくと、いつでも呼び出して使い回せます。</p>
+        <form id="save-form" class="input-row">
+          <input type="text" id="save-name" placeholder="リスト名（例: 〇〇チーム）" autocomplete="off" maxlength="30">
+          <button type="submit" class="btn btn-secondary">現在のメンバーを保存</button>
+        </form>
+        <ul id="saved-list" class="saved-list"></ul>
+        <p id="saved-empty" class="empty-message">保存されたリストはありません。</p>
+      </div>
+    </section>
+
+    <!-- 役割設定 -->
+    <section class="card">
+      <h2>2. 役割（任意）</h2>
+      <label class="checkbox-row">
+        <input type="checkbox" id="role-enabled" checked>
+        各チームに役割をランダムで割り当てる
+      </label>
+      <form id="role-form" class="input-row">
+        <input type="text" id="role-name" placeholder="役割名（例: 書記）" autocomplete="off" maxlength="20">
+        <button type="submit" class="btn btn-primary">追加</button>
+      </form>
+      <ul id="role-list" class="member-list"></ul>
+      <p id="role-empty" class="empty-message">役割がありません。上から追加してください。</p>
+      <p class="hint">人数が役割より少ないチームでは、1人が複数の役割を兼任します。</p>
+    </section>
+
+    <!-- チーム分け設定 -->
+    <section class="card">
+      <h2>3. チーム分け設定</h2>
+      <div class="mode-row">
+        <label class="radio">
+          <input type="radio" name="mode" value="perTeam" checked>
+          1チームの人数で指定
+        </label>
+        <label class="radio">
+          <input type="radio" name="mode" value="teamCount">
+          チーム数で指定
+        </label>
+      </div>
+      <div class="input-row">
+        <input type="number" id="size-input" min="1" value="2">
+        <span id="size-unit" class="unit">人 / チーム</span>
+        <button type="button" id="divide-btn" class="btn btn-primary">チーム分けする</button>
+      </div>
+      <p class="hint">割り切れない場合は、できるだけ均等になるように振り分けます。</p>
+    </section>
+
+    <!-- 結果 -->
+    <section class="card" id="result-card" hidden>
+      <div class="result-header">
+        <h2>4. チーム分け結果</h2>
+        <button type="button" id="reshuffle-btn" class="btn btn-secondary">🔀 再シャッフル</button>
+      </div>
+      <div id="result" class="teams"></div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
