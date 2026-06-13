@@ -35,9 +35,18 @@ CSV は LLM が解釈しやすいよう、1行に1つの 5W1H 項目を持つ正
 
 ## 公開 URL（GitHub Pages）
 
-`main` ブランチへのプッシュで、`.github/workflows/deploy-pages.yml` が自動的に GitHub Pages へデプロイします（初回実行時に Pages を自動で有効化します）。
+このサイトは **「ブランチ配信」** で公開します（ビルド不要・ワークフロー不要。`main` ブランチ直下の静的ファイルをそのまま配信）。
 
 - 公開 URL: <https://capinfo0000.github.io/team-division/>
+
+### 初回だけ必要な設定（リポジトリ管理者）
+
+GitHub の **Settings → Pages → Build and deployment** で次を設定して保存してください。
+
+- **Source**: `Deploy from a branch`
+- **Branch**: `main` / `(root)`
+
+保存すると GitHub が自動でビルド（`pages build and deployment`）して公開します。以降は `main` に push するたび自動で再公開されます。`.nojekyll` を置いているため、静的ファイルはそのまま配信されます。
 
 ## 使い方
 
