@@ -3,127 +3,187 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
   <div class="container">
     <header>
       <h1>🎲 チーム分けアプリ</h1>
-      <p class="subtitle">メンバーを登録して、ランダムにチーム分けできます</p>
+      <p class="subtitle">人数だけで抽選、または名前を入力してチーム単位で発表</p>
     </header>
 
-    <!-- メンバー登録 -->
-    <section class="card">
-      <h2>1. メンバー登録</h2>
-      <form id="member-form" class="input-row">
-        <input type="text" id="member-name" placeholder="名前を入力" autocomplete="off" maxlength="30">
-        <button type="submit" class="btn btn-primary">追加</button>
-      </form>
-      <p class="hint">複数まとめて追加する場合は、改行・カンマ・スペース区切りでも入力できます。</p>
+    <!-- タブ -->
+    <div class="tabs" id="tabs-bar">
+      <button type="button" class="tab active" data-tab="roulette">🎰 ルーレット抽選</button>
+      <button type="button" class="tab" data-tab="list">📝 名前でチーム発表</button>
+    </div>
 
-      <div class="member-header">
-        <span id="member-count" class="badge">0人</span>
-        <button type="button" id="clear-members" class="btn btn-text">全て削除</button>
-      </div>
-      <ul id="member-list" class="member-list"></ul>
-      <p id="empty-message" class="empty-message">まだメンバーがいません。上から追加してください。</p>
+    <!-- ===================== ルーレット抽選 ===================== -->
+    <div id="tab-roulette" class="tab-panel">
 
-      <!-- 保存リスト（使い回し） -->
-      <div class="saved-block">
-        <h3>保存リスト</h3>
-        <p class="hint">今のメンバーに名前を付けて保存しておくと、いつでも呼び出して使い回せます。</p>
-        <form id="save-form" class="input-row">
-          <input type="text" id="save-name" placeholder="リスト名（例: 〇〇チーム）" autocomplete="off" maxlength="30">
-          <button type="submit" class="btn btn-secondary">現在のメンバーを保存</button>
+      <!-- 設定 -->
+      <section class="card" id="roulette-settings">
+        <h2>設定</h2>
+        <div class="field-row">
+          <label class="field">
+            <span>人数</span>
+            <input type="number" id="r-count" min="1" max="200" value="6">
+          </label>
+          <label class="field">
+            <span>チーム数</span>
+            <input type="number" id="r-teams" min="1" max="26" value="2">
+          </label>
+        </div>
+
+        <div class="role-block">
+          <label class="checkbox-row">
+            <input type="checkbox" id="r-role-enabled" checked>
+            役割もルーレットで割り当てる
+          </label>
+          <form id="r-role-form" class="input-row">
+            <input type="text" id="r-role-name" placeholder="役割名（例: 書記）" autocomplete="off" maxlength="20">
+            <button type="submit" class="btn btn-primary">追加</button>
+          </form>
+          <ul id="r-role-list" class="member-list"></ul>
+          <p class="hint">人数が役割より多いチームでは「役割なし」、少ないチームでは1人が兼任します。</p>
+        </div>
+
+        <button type="button" id="r-start" class="btn btn-big btn-primary">▶ スタート</button>
+      </section>
+    </div>
+
+    <!-- ===================== リストで分ける ===================== -->
+    <div id="tab-list" class="tab-panel" hidden>
+
+      <!-- メンバー登録 -->
+      <section class="card">
+        <h2>1. メンバー登録</h2>
+        <form id="member-form" class="input-row">
+          <input type="text" id="member-name" placeholder="名前を入力" autocomplete="off" maxlength="30">
+          <button type="submit" class="btn btn-primary">追加</button>
+          <button type="button" id="open-saved" class="btn btn-secondary">📂 保存リスト</button>
         </form>
-        <ul id="saved-list" class="saved-list"></ul>
-        <p id="saved-empty" class="empty-message">保存されたリストはありません。</p>
-      </div>
-    </section>
+        <p class="hint">複数まとめて追加する場合は、改行・カンマ・スペース区切りでも入力できます。</p>
 
-    <!-- 役割設定 -->
-    <section class="card">
-      <h2>2. 役割（任意）</h2>
-      <label class="checkbox-row">
-        <input type="checkbox" id="role-enabled" checked>
-        各チームに役割をランダムで割り当てる
+        <div class="member-header">
+          <span id="member-count" class="badge">0人</span>
+          <button type="button" id="clear-members" class="btn btn-text">全て削除</button>
+        </div>
+        <ul id="member-list" class="member-list"></ul>
+        <p id="empty-message" class="empty-message">まだメンバーがいません。上から追加してください。</p>
+      </section>
+
+      <!-- 役割設定 -->
+      <section class="card">
+        <h2>2. 役割（任意）</h2>
+        <label class="checkbox-row">
+          <input type="checkbox" id="role-enabled" checked>
+          各チームに役割をランダムで割り当てる
+        </label>
+        <form id="role-form" class="input-row">
+          <input type="text" id="role-name" placeholder="役割名（例: 書記）" autocomplete="off" maxlength="20">
+          <button type="submit" class="btn btn-primary">追加</button>
+        </form>
+        <ul id="role-list" class="member-list"></ul>
+        <p id="role-empty" class="empty-message">役割がありません。上から追加してください。</p>
+        <p class="hint">人数が役割より少ないチームでは、1人が複数の役割を兼任します。</p>
+      </section>
+
+      <!-- チーム分け設定 -->
+      <section class="card">
+        <h2>3. チーム分け設定</h2>
+        <div class="mode-row">
+          <label class="radio">
+            <input type="radio" name="mode" value="teamCount" checked>
+            チーム数で指定
+          </label>
+          <label class="radio">
+            <input type="radio" name="mode" value="perTeam">
+            1チームの人数で指定
+          </label>
+        </div>
+        <div class="input-row">
+          <input type="number" id="size-input" min="1" value="2">
+          <span id="size-unit" class="unit">チーム</span>
+        </div>
+        <p class="hint">割り切れない場合は、できるだけ均等になるように振り分けます。</p>
+        <button type="button" id="list-start" class="btn btn-big btn-primary">🎰 ルーレットでスタート</button>
+        <p class="hint">「Aチームの発表はこちら」を押すと、リスト内でメンバー名がシャッフル→確定（役割の人が上）。チームごとに発表します。</p>
+      </section>
+    </div>
+
+    <!-- ===================== ルーレット画面（両モード共通） ===================== -->
+    <section class="card stage-card" id="roulette-stage" hidden>
+      <div class="progress" id="r-progress">6人中 1人目</div>
+      <div class="person-label" id="r-person">1番目の人</div>
+      <label class="checkbox-row voice-row">
+        <input type="checkbox" id="voice-enabled" checked>
+        🔊 結果を音声で読み上げる
       </label>
-      <form id="role-form" class="input-row">
-        <input type="text" id="role-name" placeholder="役割名（例: 書記）" autocomplete="off" maxlength="20">
-        <button type="submit" class="btn btn-primary">追加</button>
-      </form>
-      <ul id="role-list" class="member-list"></ul>
-      <p id="role-empty" class="empty-message">役割がありません。上から追加してください。</p>
-      <p class="hint">人数が役割より少ないチームでは、1人が複数の役割を兼任します。</p>
+
+      <button type="button" id="r-reveal" class="btn btn-big btn-primary" hidden>発表！</button>
+      <button type="button" id="r-next" class="btn btn-big btn-secondary" hidden>次の人へ ▶</button>
+
+      <div class="reel" id="r-reel">
+        <div class="reel-team" id="r-reel-team">？</div>
+        <div class="reel-role" id="r-reel-role">？</div>
+      </div>
+
+      <ol class="reel-list" id="r-reel-list" hidden></ol>
+
+      <button type="button" id="r-abort" class="btn btn-text">中止して設定に戻る</button>
     </section>
 
-    <!-- チーム分け設定 -->
-    <section class="card">
-      <h2>3. チーム分け設定</h2>
-      <div class="mode-row">
-        <label class="radio">
-          <input type="radio" name="mode" value="perTeam" checked>
-          1チームの人数で指定
-        </label>
-        <label class="radio">
-          <input type="radio" name="mode" value="teamCount">
-          チーム数で指定
-        </label>
-      </div>
-      <div class="input-row">
-        <input type="number" id="size-input" min="1" value="2">
-        <span id="size-unit" class="unit">人 / チーム</span>
-        <button type="button" id="divide-btn" class="btn btn-primary">チーム分けする</button>
-      </div>
-      <p class="hint">割り切れない場合は、できるだけ均等になるように振り分けます。</p>
-    </section>
-
-    <!-- 結果 -->
-    <section class="card" id="result-card" hidden>
+    <section class="card" id="roulette-summary" hidden>
       <div class="result-header">
-        <h2>4. チーム分け結果</h2>
-        <button type="button" id="reshuffle-btn" class="btn btn-secondary">🔀 再シャッフル</button>
+        <h2>結果一覧</h2>
+        <div class="result-actions">
+          <button type="button" id="r-again" class="btn btn-secondary">🔀 もう一度</button>
+          <button type="button" id="r-back" class="btn btn-text">設定に戻る</button>
+        </div>
       </div>
-      <div id="result" class="teams"></div>
+      <div id="r-summary" class="teams"></div>
     </section>
 
-    <!-- 1人ずつ抽選（ルーレット） -->
-    <section class="card" id="roulette-card" hidden>
-      <div class="result-header">
-        <h2>5. 1人ずつ発表（ルーレット）</h2>
-        <label class="checkbox-row" style="margin:0;">
-          <input type="checkbox" id="voice-enabled" checked>
-          🔊 音声で読み上げる
-        </label>
-      </div>
-      <p class="hint">「抽選する」を押すと1人ずつチームを発表します。次の人の番になると、前の人の結果は自動で隠れます。</p>
-      <div class="roulette-stage">
-        <div id="roulette-display" class="roulette-display">？</div>
-        <p id="roulette-progress" class="roulette-progress"></p>
-      </div>
-      <div class="input-row roulette-controls">
-        <button type="button" id="roulette-draw" class="btn btn-primary">🎰 抽選する</button>
-        <button type="button" id="roulette-next" class="btn btn-secondary" hidden>次の人へ ▶</button>
-        <button type="button" id="roulette-reset" class="btn btn-text">最初から</button>
-      </div>
-    </section>
-
-    <!-- チームメモ（5W1H） -->
+    <!-- ===================== チームメモ（5W1H） ===================== -->
     <section class="card" id="memo-card" hidden>
       <div class="result-header">
-        <h2>6. チームメモ（5W1H）</h2>
+        <h2>チームメモ（5W1H）</h2>
         <button type="button" id="export-csv" class="btn btn-secondary">⬇ CSVで書き出す</button>
       </div>
-      <p class="hint">オフラインの話し合いを5W1Hで記録できます。内容はこの端末に自動保存されます。CSVはAIでの要約・整理に使えるよう、1行＝1項目の形式で出力します。</p>
+      <p class="hint">オフラインの話し合いを5W1Hで記録できます。内容はこの端末に自動保存されます。CSVは別システム（AI）での要約・整理に使えるよう、1行＝1項目の形式で出力します。</p>
       <div class="input-row memo-open-row">
         <input type="number" id="memo-team-input" min="1" placeholder="チーム番号">
         <button type="button" id="memo-open" class="btn btn-primary">番号でメモを開く</button>
       </div>
       <div id="memo-list" class="memo-teams"></div>
     </section>
+
+    <p class="ver">ver. 21</p>
   </div>
 
-  <script src="app.js"></script>
+  <!-- 保存リスト（ポップアップ） -->
+  <div id="saved-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="saved-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>📂 保存リスト</h3>
+        <button type="button" id="saved-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <p class="hint">今のメンバーに名前を付けて保存しておくと、いつでも呼び出して使い回せます。</p>
+      <form id="save-form" class="input-row">
+        <input type="text" id="save-name" placeholder="リスト名（例: 〇〇チーム）" autocomplete="off" maxlength="30">
+        <button type="submit" class="btn btn-secondary">現在のメンバーを保存</button>
+      </form>
+      <ul id="saved-list" class="saved-list"></ul>
+      <p id="saved-empty" class="empty-message">保存されたリストはありません。</p>
+    </div>
+  </div>
+
+  <script src="app.js?v=21"></script>
 </body>
 </html>

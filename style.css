@@ -13,6 +13,9 @@
 
 * { box-sizing: border-box; }
 
+/* hidden 属性は常に最優先で非表示に（.btn-big の display:block 等に負けないように） */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
@@ -25,12 +28,12 @@ body {
 .container {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 32px 20px 80px;
 }
 
 header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 h1 {
@@ -46,14 +49,14 @@ h1 {
 .card {
   background: var(--card);
   border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 28px 26px;
+  margin-bottom: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .card h2 {
   font-size: 1.1rem;
-  margin: 0 0 16px;
+  margin: 0 0 20px;
 }
 
 .input-row {
@@ -234,6 +237,211 @@ input:focus {
   margin-bottom: 14px;
 }
 
+/* ---- タブ ---- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.tab {
+  flex: 1;
+  padding: 12px 10px;
+  border: 1px solid var(--border);
+  background: #eef1f8;
+  color: var(--muted);
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tab.active {
+  background: var(--card);
+  color: var(--primary);
+  border-bottom-color: var(--card);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* ---- 設定フィールド ---- */
+.field-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.field input[type="number"] {
+  flex: none;
+  width: 110px;
+  font-size: 1.2rem;
+  text-align: center;
+}
+.role-block {
+  padding: 20px 0;
+  margin: 8px 0 16px;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+}
+
+/* ---- 大きいボタン ---- */
+.btn-big {
+  display: block;
+  width: 100%;
+  padding: 18px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 14px 0;
+}
+
+/* ---- ルーレット本体 ---- */
+.stage-card {
+  text-align: center;
+}
+.progress {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.person-label {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 10px 0 22px;
+}
+.reel {
+  background: linear-gradient(160deg, #1f2937, #374151);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 48px 16px;
+  margin: 10px 0 24px;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+.reel-team {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+.reel-role {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 6px;
+  color: #a7f3d0;
+}
+.reel.spinning .reel-team,
+.reel.spinning .reel-role {
+  opacity: 0.55;
+  filter: blur(0.6px);
+}
+.reel.settled {
+  animation: pop 0.32s ease;
+}
+@keyframes pop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.result-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ---- チーム発表のメンバー一覧 ---- */
+.reel-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  text-align: left;
+  animation: pop 0.32s ease;
+}
+.reel-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 13px 16px;
+  margin-bottom: 10px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.reel-list li .role-tag {
+  margin-left: 0;
+}
+.reel-list.shuffling li {
+  color: var(--muted);
+  justify-content: center;
+}
+
+.ver {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin: 24px 0 0;
+}
+
+/* ---- 保存リストのポップアップ ---- */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.5);
+}
+.modal-card {
+  position: relative;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 24px 26px 28px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  animation: pop 0.2s ease;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.modal-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.modal-close {
+  border: none;
+  background: var(--bg);
+  color: var(--muted);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.modal-close:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
 .role-tag {
   display: inline-block;
   background: var(--secondary);
@@ -246,8 +454,8 @@ input:focus {
 
 .mode-row {
   display: flex;
-  gap: 20px;
-  margin-bottom: 16px;
+  gap: 24px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
@@ -269,7 +477,7 @@ input:focus {
 .teams {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 20px;
 }
 
 .team {
@@ -298,62 +506,11 @@ input:focus {
 }
 .team li { padding: 2px 0; }
 
-/* ---- 1人ずつ抽選（ルーレット） ---- */
-.roulette-stage {
-  text-align: center;
-  margin: 8px 0 16px;
-}
-
-.roulette-display {
-  min-height: 120px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* ---- 音声読み上げトグル（ルーレット画面） ---- */
+.voice-row {
   justify-content: center;
-  gap: 6px;
-  border: 3px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--muted);
-  padding: 16px;
-  transition: border-color 0.2s, background 0.2s;
+  margin: 4px 0 12px;
 }
-
-.roulette-display.spinning {
-  border-color: var(--primary);
-  color: var(--primary);
-  animation: roulette-pulse 0.16s infinite alternate;
-}
-
-@keyframes roulette-pulse {
-  from { transform: scale(1); }
-  to { transform: scale(1.04); }
-}
-
-.roulette-display.revealed {
-  border-color: var(--secondary);
-  background: #ecfdf5;
-  color: var(--text);
-}
-
-.roulette-display .r-name {
-  font-size: 2.2rem;
-  color: var(--text);
-}
-.roulette-display .r-team {
-  font-size: 1.4rem;
-  color: var(--secondary);
-}
-
-.roulette-progress {
-  color: var(--muted);
-  font-size: 0.9rem;
-  margin: 10px 0 0;
-}
-
-.roulette-controls { justify-content: center; }
 
 /* ---- チームメモ（5W1H） ---- */
 .memo-open-row { margin-bottom: 16px; }
@@ -425,9 +582,7 @@ input:focus {
 }
 .memo-cell textarea:focus { border-color: var(--primary); }
 
-.memo-team.flash {
-  animation: memo-flash 1.4s ease;
-}
+.memo-team.flash { animation: memo-flash 1.4s ease; }
 @keyframes memo-flash {
   0%, 100% { box-shadow: 0 0 0 0 rgba(79, 110, 247, 0); }
   30% { box-shadow: 0 0 0 4px rgba(79, 110, 247, 0.4); }
