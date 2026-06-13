@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
   <div class="container">
@@ -155,7 +155,7 @@
         <h2>チームメモ（5W1H）</h2>
         <button type="button" id="export-csv" class="btn btn-secondary">⬇ CSVで書き出す</button>
       </div>
-      <p class="hint">オフラインの話し合いを5W1Hで記録できます。内容はこの端末に自動保存されます。CSVは別システム（AI）での要約・整理に使えるよう、1行＝1項目の形式で出力します。</p>
+      <p class="hint">オフラインの話し合いを各チーム1つの欄に自由記述で記録できます（薄い文字は記入例です）。内容はこの端末に自動保存されます。「CSVで書き出す」で、AIでの要約・整理に使えるよう1チーム＝1行で出力します。</p>
       <div class="input-row memo-open-row">
         <input type="number" id="memo-team-input" min="1" placeholder="チーム番号">
         <button type="button" id="memo-open" class="btn btn-primary">番号でメモを開く</button>
@@ -163,7 +163,7 @@
       <div id="memo-list" class="memo-teams"></div>
     </section>
 
-    <p class="ver">ver. 21</p>
+    <p class="ver">ver. 22</p>
   </div>
 
   <!-- 保存リスト（ポップアップ） -->
@@ -184,6 +184,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=21"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

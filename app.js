@@ -7,16 +7,15 @@
   var MEMOS_KEY = "team-division-memos";
   var DEFAULT_ROLES = ["書記", "発表", "司会", "タイムキーパー"];
 
-  // 5W1H（CSVのelement_keyは英語、画面ラベルは日本語）
-  var W5H1 = [
-    { key: "when", label: "いつ (When)" },
-    { key: "where", label: "どこで (Where)" },
-    { key: "who", label: "だれが (Who)" },
-    { key: "what", label: "なにを (What)" },
-    { key: "why", label: "なぜ (Why)" },
-    { key: "how", label: "どうやって (How)" },
-    { key: "notes", label: "備考 (Notes)" }
-  ];
+  // 5W1Hは項目分けせず、1つの入力欄に薄い記入例（プレースホルダー）で誘導する
+  var MEMO_PLACEHOLDER =
+    "例）こんな感じで5W1Hを意識して記入してください。\n" +
+    "いつ　　：来週月曜の朝礼で\n" +
+    "どこで　：第1会議室\n" +
+    "だれが　：田中さんが\n" +
+    "なにを　：新企画の提案資料を準備\n" +
+    "なぜ　　：承認をもらうため\n" +
+    "どうやって：スライド3枚にまとめて説明";
 
   // ---- 状態 ----
   var members = loadMembers();
@@ -169,11 +168,21 @@
     }
   }
 
-  // チーム番号に対応するメモオブジェクトを取得（なければ作成）
-  function getMemo(teamNumber) {
-    var key = String(teamNumber);
-    if (!memos[key]) memos[key] = {};
-    return memos[key];
+  // チーム番号に対応するメモ本文（自由記述の1テキスト）を取得
+  function getMemoText(teamNumber) {
+    var v = memos[String(teamNumber)];
+    if (typeof v === "string") return v;
+    // 旧形式（項目別オブジェクト）が残っていれば1テキストに連結して救済
+    if (v && typeof v === "object") {
+      return Object.keys(v).map(function (k) { return v[k]; })
+        .filter(function (s) { return s; }).join("\n");
+    }
+    return "";
+  }
+
+  function setMemoText(teamNumber, text) {
+    memos[String(teamNumber)] = text;
+    saveMemos();
   }
 
   // ---- 音声読み上げ（ブラウザの音声合成）----
@@ -718,8 +727,6 @@
   }
 
   function buildMemoTeam(team) {
-    var memo = getMemo(team.number);
-
     var wrap = document.createElement("div");
     wrap.className = "memo-team";
     wrap.id = "memo-team-" + team.number;
@@ -740,29 +747,21 @@
     head.appendChild(title);
     head.appendChild(membersEl);
 
-    var grid = document.createElement("div");
-    grid.className = "memo-grid";
-    W5H1.forEach(function (el) {
-      var cell = document.createElement("div");
-      cell.className = "memo-cell";
-      var label = document.createElement("label");
-      var fieldId = "memo-" + team.number + "-" + el.key;
-      label.textContent = el.label;
-      label.setAttribute("for", fieldId);
-      var ta = document.createElement("textarea");
-      ta.id = fieldId;
-      ta.value = memo[el.key] || "";
-      ta.addEventListener("input", function () {
-        getMemo(team.number)[el.key] = ta.value;
-        saveMemos();
-      });
-      cell.appendChild(label);
-      cell.appendChild(ta);
-      grid.appendChild(cell);
+    // 1つの自由記述欄。記入例は薄いプレースホルダーで表示
+    var body = document.createElement("div");
+    body.className = "memo-body";
+    var ta = document.createElement("textarea");
+    ta.className = "memo-text";
+    ta.id = "memo-" + team.number + "-text";
+    ta.placeholder = MEMO_PLACEHOLDER;
+    ta.value = getMemoText(team.number);
+    ta.addEventListener("input", function () {
+      setMemoText(team.number, ta.value);
     });
+    body.appendChild(ta);
 
     wrap.appendChild(head);
-    wrap.appendChild(grid);
+    wrap.appendChild(body);
     return wrap;
   }
 
@@ -801,16 +800,15 @@
       return;
     }
     var rows = [
-      ["team_number", "team_name", "members", "element_key", "element_label", "content"]
+      ["team_number", "team_name", "members", "memo"]
     ];
     currentTeams.forEach(function (team) {
-      var membersStr = team.members.join(" / ");
-      var memo = memos[String(team.number)] || {};
-      W5H1.forEach(function (el) {
-        rows.push([
-          team.number, team.name, membersStr, el.key, el.label, memo[el.key] || ""
-        ]);
-      });
+      rows.push([
+        team.number,
+        team.name,
+        team.members.join(" / "),
+        getMemoText(team.number)
+      ]);
     });
 
     var csv = rows
