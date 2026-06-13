@@ -87,6 +87,41 @@
       </div>
       <div id="result" class="teams"></div>
     </section>
+
+    <!-- 1人ずつ抽選（ルーレット） -->
+    <section class="card" id="roulette-card" hidden>
+      <div class="result-header">
+        <h2>5. 1人ずつ発表（ルーレット）</h2>
+        <label class="checkbox-row" style="margin:0;">
+          <input type="checkbox" id="voice-enabled" checked>
+          🔊 音声で読み上げる
+        </label>
+      </div>
+      <p class="hint">「抽選する」を押すと1人ずつチームを発表します。次の人の番になると、前の人の結果は自動で隠れます。</p>
+      <div class="roulette-stage">
+        <div id="roulette-display" class="roulette-display">？</div>
+        <p id="roulette-progress" class="roulette-progress"></p>
+      </div>
+      <div class="input-row roulette-controls">
+        <button type="button" id="roulette-draw" class="btn btn-primary">🎰 抽選する</button>
+        <button type="button" id="roulette-next" class="btn btn-secondary" hidden>次の人へ ▶</button>
+        <button type="button" id="roulette-reset" class="btn btn-text">最初から</button>
+      </div>
+    </section>
+
+    <!-- チームメモ（5W1H） -->
+    <section class="card" id="memo-card" hidden>
+      <div class="result-header">
+        <h2>6. チームメモ（5W1H）</h2>
+        <button type="button" id="export-csv" class="btn btn-secondary">⬇ CSVで書き出す</button>
+      </div>
+      <p class="hint">オフラインの話し合いを5W1Hで記録できます。内容はこの端末に自動保存されます。CSVはAIでの要約・整理に使えるよう、1行＝1項目の形式で出力します。</p>
+      <div class="input-row memo-open-row">
+        <input type="number" id="memo-team-input" min="1" placeholder="チーム番号">
+        <button type="button" id="memo-open" class="btn btn-primary">番号でメモを開く</button>
+      </div>
+      <div id="memo-list" class="memo-teams"></div>
+    </section>
   </div>
 
   <script src="app.js"></script>
