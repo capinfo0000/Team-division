@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
   <div class="container">
@@ -20,6 +20,7 @@
     <div class="tabs" id="tabs-bar">
       <button type="button" class="tab active" data-tab="roulette">🎰 ルーレット抽選</button>
       <button type="button" class="tab" data-tab="list">📝 名前でチーム発表</button>
+      <button type="button" class="tab" data-tab="memo">🗒️ メモを開く</button>
     </div>
 
     <!-- ===================== ルーレット抽選 ===================== -->
@@ -116,6 +117,19 @@
       </section>
     </div>
 
+    <!-- ===================== メモを開く（別端末用） ===================== -->
+    <div id="tab-memo" class="tab-panel" hidden>
+      <section class="card">
+        <h2>チームメモを開く</h2>
+        <p class="hint">幹事から伝えられた「チーム番号」を入力すると、そのチームのメモを書けます。サーバー連携が設定されていれば、別端末で書いた内容もこの番号で開けます（未設定の場合はこの端末内のメモのみ）。</p>
+        <div class="input-row">
+          <input type="number" id="memo-open-input" inputmode="numeric" placeholder="チーム番号">
+          <button type="button" id="memo-open-standalone" class="btn btn-primary">メモを開く</button>
+        </div>
+        <div id="memo-standalone" class="memo-teams"></div>
+      </section>
+    </div>
+
     <!-- ===================== ルーレット画面（両モード共通） ===================== -->
     <section class="card stage-card" id="roulette-stage" hidden>
       <div class="progress" id="r-progress">6人中 1人目</div>
@@ -153,17 +167,21 @@
     <section class="card" id="memo-card" hidden>
       <div class="result-header">
         <h2>チームメモ（5W1H）</h2>
-        <button type="button" id="export-csv" class="btn btn-secondary">⬇ CSVで書き出す</button>
+        <div class="result-actions">
+          <button type="button" id="issue-codes" class="btn btn-primary" hidden>📡 チーム番号を発行</button>
+          <button type="button" id="export-csv" class="btn btn-secondary">⬇ CSVで書き出す</button>
+        </div>
       </div>
-      <p class="hint">オフラインの話し合いを各チーム1つの欄に自由記述で記録できます（薄い文字は記入例です）。内容はこの端末に自動保存されます。「CSVで書き出す」で、AIでの要約・整理に使えるよう1チーム＝1行で出力します。</p>
+      <p id="session-info" class="session-info" hidden></p>
+      <p class="hint">オフラインの話し合いを各チーム1つの欄に自由記述で記録できます（薄い文字は記入例です）。内容は自動保存されます。「📡 チーム番号を発行」を押すと各チームに番号が割り当てられ、別端末でその番号を入力して同じメモを編集できます（サーバー連携時）。「CSVで書き出す」で1チーム＝1行で出力します。</p>
       <div class="input-row memo-open-row">
         <input type="number" id="memo-team-input" min="1" placeholder="チーム番号">
-        <button type="button" id="memo-open" class="btn btn-primary">番号でメモを開く</button>
+        <button type="button" id="memo-open" class="btn btn-primary">この一覧内で開く</button>
       </div>
       <div id="memo-list" class="memo-teams"></div>
     </section>
 
-    <p class="ver">ver. 22</p>
+    <p class="ver">ver. 24</p>
   </div>
 
   <!-- 保存リスト（ポップアップ） -->
@@ -184,6 +202,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>

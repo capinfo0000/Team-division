@@ -1,0 +1,7 @@
+# DB接続情報ファイルへの直接アクセスを禁止
+<Files "config.php">
+  Require all denied
+</Files>
+<Files "config.sample.php">
+  Require all denied
+</Files>

@@ -5,7 +5,13 @@
   var SAVED_KEY = "team-division-saved";
   var ROLES_KEY = "team-division-roles";
   var MEMOS_KEY = "team-division-memos";
+  var SESSION_KEY = "team-division-session";
   var DEFAULT_ROLES = ["書記", "発表", "司会", "タイムキーパー"];
+
+  // バックエンド（PHP API）のURL。空のままだと、この端末内だけのローカル保存で動作します。
+  // 本番（別端末で番号を入れて共有）するときは、配置した memo.php のURLを設定してください。
+  //   例: "https://example.com/team-division/api/memo.php"
+  var API_BASE = "";
 
   // 5W1Hは項目分けせず、1つの入力欄に薄い記入例（プレースホルダー）で誘導する
   var MEMO_PLACEHOLDER =
@@ -21,8 +27,9 @@
   var members = loadMembers();
   var savedLists = loadSaved(); // { 名前: [メンバー...] }
   var roles = loadRoles(); // 役割名の配列
-  var memos = loadMemos(); // { "チーム番号": {when,where,...,notes} }
-  var currentTeams = []; // 直近の結果一覧 [{ number, name, members:[名前...] }]
+  var memos = loadMemos(); // { "チーム番号": "メモ本文" }（ローカル保存用）
+  var currentTeams = []; // 直近の結果一覧 [{ number, name, members:[名前...], code? }]
+  var currentSession = loadSession(); // { session_code, codeByNumber:{番号:team_code} } or null
 
   // ---- DOM ----
   var form = document.getElementById("member-form");
@@ -82,6 +89,11 @@
   var memoTeamInput = document.getElementById("memo-team-input");
   var memoOpenBtn = document.getElementById("memo-open");
   var exportCsvBtn = document.getElementById("export-csv");
+  var issueCodesBtn = document.getElementById("issue-codes");
+  var sessionInfoEl = document.getElementById("session-info");
+  var memoOpenInput = document.getElementById("memo-open-input");
+  var memoOpenStandaloneBtn = document.getElementById("memo-open-standalone");
+  var memoStandaloneEl = document.getElementById("memo-standalone");
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
@@ -185,15 +197,89 @@
     saveMemos();
   }
 
+  function loadSession() {
+    try {
+      var raw = localStorage.getItem(SESSION_KEY);
+      var obj = raw ? JSON.parse(raw) : null;
+      return obj && obj.session_code ? obj : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function persistSession() {
+    try {
+      if (currentSession) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(currentSession));
+      } else {
+        localStorage.removeItem(SESSION_KEY);
+      }
+    } catch (e) {
+      /* 保存失敗は無視 */
+    }
+  }
+
+  // ---- バックエンドAPI（任意）----
+  function apiEnabled() {
+    return typeof API_BASE === "string" && API_BASE !== "";
+  }
+
+  function apiUrl(params) {
+    var qs = [];
+    Object.keys(params || {}).forEach(function (k) {
+      qs.push(encodeURIComponent(k) + "=" + encodeURIComponent(params[k]));
+    });
+    if (!qs.length) return API_BASE;
+    return API_BASE + (API_BASE.indexOf("?") >= 0 ? "&" : "?") + qs.join("&");
+  }
+
+  function apiGet(params) {
+    return fetch(apiUrl(params), { method: "GET" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function apiPost(params, body) {
+    return fetch(apiUrl(params), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {})
+    }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
   // ---- 音声読み上げ（ブラウザの音声合成）----
+  var speechPrimed = false;
+
+  // iOS Safari 等では、最初のユーザー操作の中で一度 speak() を呼んでおかないと、
+  // アニメーション後（setTimeout内）の読み上げがブロックされて無音になる。
+  // そこで最初のタップ時に無音の発話で音声エンジンを「解錠」しておく。
+  function primeSpeech() {
+    if (speechPrimed || !("speechSynthesis" in window)) return;
+    try {
+      var u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+      speechPrimed = true;
+    } catch (e) {
+      /* 無視 */
+    }
+  }
+
   function speak(text) {
     if (!voiceEnabled || !voiceEnabled.checked) return;
     if (!("speechSynthesis" in window)) return;
     try {
-      window.speechSynthesis.cancel();
+      var synth = window.speechSynthesis;
+      if (synth.speaking || synth.pending) synth.cancel();
       var u = new SpeechSynthesisUtterance(text);
       u.lang = "ja-JP";
-      window.speechSynthesis.speak(u);
+      u.rate = 1.0;
+      synth.resume(); // 一部ブラウザで一時停止状態になるのを防ぐ
+      synth.speak(u);
     } catch (e) {
       /* 読み上げ失敗は無視 */
     }
@@ -453,6 +539,7 @@
     tabsBar.hidden = true;
     document.getElementById("tab-roulette").hidden = true;
     document.getElementById("tab-list").hidden = true;
+    document.getElementById("tab-memo").hidden = true;
     summaryCard.hidden = true;
     stageCard.hidden = false;
     revealStep(0);
@@ -547,6 +634,7 @@
   // 発表ボタンを押したら抽選演出を開始（person=1人ずつ / team=チーム単位）
   function onReveal() {
     if (spinning) return;
+    primeSpeech(); // 発表タップ時に音声を解錠（iOS対策）
     revealBtn.hidden = true;
     if (rMode === "person") {
       spinPerson(rCurrent);
@@ -714,11 +802,21 @@
       summaryEl.appendChild(div);
     }
 
+    // 新しいチーム分けになったので、前回発行したセッションは一旦リセット
+    currentSession = null;
+    persistSession();
+    currentTeams.forEach(function (t) { t.code = null; });
+
+    issueCodesBtn.hidden = !apiEnabled();
+    issueCodesBtn.disabled = false;
+    issueCodesBtn.textContent = "📡 チーム番号を発行";
+    sessionInfoEl.hidden = true;
+
     renderMemos(currentTeams);
     memoCard.hidden = false;
   }
 
-  // ---- チームメモ（5W1H）----
+  // ---- チームメモ ----
   function renderMemos(teams) {
     memoListEl.innerHTML = "";
     teams.forEach(function (team) {
@@ -726,7 +824,25 @@
     });
   }
 
+  // チームの保存先を決める（発行済みでAPI有効ならサーバー、それ以外は端末ローカル）
+  function memoTargetForTeam(team) {
+    if (apiEnabled() && team.code) return { kind: "server", code: team.code };
+    return { kind: "local", number: team.number };
+  }
+
   function buildMemoTeam(team) {
+    var target = memoTargetForTeam(team);
+    var initial = target.kind === "local" ? getMemoText(team.number) : (team._memo || "");
+    return buildMemoEditor({
+      number: team.number,
+      name: team.name,
+      members: team.members,
+      code: team.code
+    }, target, initial);
+  }
+
+  // メモ1件分のエディタ（結果一覧・別端末タブの両方で使う共通部品）
+  function buildMemoEditor(team, target, initialText) {
     var wrap = document.createElement("div");
     wrap.className = "memo-team";
     wrap.id = "memo-team-" + team.number;
@@ -736,15 +852,24 @@
     var title = document.createElement("div");
     title.className = "memo-team-title";
     var nameSpan = document.createElement("span");
-    nameSpan.textContent = team.name + "（番号: " + team.number + "）";
+    nameSpan.textContent = team.name;
     var countSpan = document.createElement("span");
-    countSpan.textContent = team.members.length + "人";
+    countSpan.textContent = (team.members ? team.members.length : 0) + "人";
     title.appendChild(nameSpan);
     title.appendChild(countSpan);
+
+    var codeEl = document.createElement("div");
+    codeEl.className = "memo-team-code";
+    codeEl.textContent = "番号: " + (team.code || team.number) +
+      (target.kind === "server" ? "（別端末でこの番号を入力）" : "");
+
     var membersEl = document.createElement("div");
     membersEl.className = "memo-team-members";
-    membersEl.textContent = "メンバー: " + (team.members.join("、") || "（なし）");
+    membersEl.textContent = "メンバー: " +
+      ((team.members && team.members.length) ? team.members.join("、") : "（なし）");
+
     head.appendChild(title);
+    head.appendChild(codeEl);
     head.appendChild(membersEl);
 
     // 1つの自由記述欄。記入例は薄いプレースホルダーで表示
@@ -752,17 +877,125 @@
     body.className = "memo-body";
     var ta = document.createElement("textarea");
     ta.className = "memo-text";
-    ta.id = "memo-" + team.number + "-text";
     ta.placeholder = MEMO_PLACEHOLDER;
-    ta.value = getMemoText(team.number);
-    ta.addEventListener("input", function () {
-      setMemoText(team.number, ta.value);
-    });
-    body.appendChild(ta);
+    ta.value = initialText || "";
 
+    var status = document.createElement("p");
+    status.className = "memo-status";
+
+    if (target.kind === "local") {
+      ta.addEventListener("input", function () {
+        setMemoText(target.number, ta.value);
+      });
+    } else {
+      // サーバー保存（入力が止まってから保存）
+      var timer = null;
+      ta.addEventListener("input", function () {
+        status.textContent = "入力中…";
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function () {
+          status.textContent = "保存中…";
+          apiPost({ action: "save" }, { team_code: target.code, memo: ta.value })
+            .then(function () { status.textContent = "✓ サーバーに保存しました"; })
+            .catch(function () { status.textContent = "⚠ 保存に失敗（通信エラー）"; });
+        }, 700);
+      });
+    }
+
+    body.appendChild(ta);
+    body.appendChild(status);
     wrap.appendChild(head);
     wrap.appendChild(body);
     return wrap;
+  }
+
+  // 「チーム番号を発行」：チーム構成をサーバーに登録し、番号（コード）を受け取る
+  function issueCodes() {
+    if (!apiEnabled()) {
+      window.alert("サーバー連携が未設定です（app.js の API_BASE を設定してください）。");
+      return;
+    }
+    if (currentTeams.length === 0) {
+      window.alert("先にチーム分けをしてください。");
+      return;
+    }
+    issueCodesBtn.disabled = true;
+    issueCodesBtn.textContent = "発行中…";
+    var payload = {
+      teams: currentTeams.map(function (t) {
+        return { team_number: t.number, team_name: t.name, members: t.members };
+      })
+    };
+    apiPost({ action: "create" }, payload).then(function (res) {
+      currentSession = { session_code: res.session_code, codeByNumber: {} };
+      (res.teams || []).forEach(function (t) {
+        currentSession.codeByNumber[t.team_number] = t.team_code;
+      });
+      currentTeams.forEach(function (t) {
+        t.code = currentSession.codeByNumber[t.number] || null;
+      });
+      persistSession();
+      renderMemos(currentTeams);
+      showSessionInfo();
+      issueCodesBtn.disabled = false;
+      issueCodesBtn.textContent = "🔄 番号を再発行";
+    }).catch(function () {
+      issueCodesBtn.disabled = false;
+      issueCodesBtn.textContent = "📡 チーム番号を発行";
+      window.alert("番号の発行に失敗しました。API_BASEの設定とサーバー（memo.php / DB）をご確認ください。");
+    });
+  }
+
+  function showSessionInfo() {
+    if (!currentSession) { sessionInfoEl.hidden = true; return; }
+    sessionInfoEl.textContent =
+      "集約コード: " + currentSession.session_code +
+      "（幹事用。CSVはこのコードの全チーム分をまとめて出力します）。" +
+      "各チームには下に表示された番号を伝えてください。";
+    sessionInfoEl.hidden = false;
+  }
+
+  // 別端末タブ：番号を入力してそのチームのメモを開く
+  function openStandaloneMemo() {
+    var raw = (memoOpenInput.value || "").trim();
+    if (!raw) {
+      window.alert("チーム番号を入力してください。");
+      return;
+    }
+    memoStandaloneEl.innerHTML = "";
+
+    if (apiEnabled()) {
+      var loading = document.createElement("p");
+      loading.className = "hint";
+      loading.textContent = "読み込み中…";
+      memoStandaloneEl.appendChild(loading);
+      apiGet({ team: raw }).then(function (row) {
+        memoStandaloneEl.innerHTML = "";
+        var members = (row.members || "").split(/\r?\n/).filter(Boolean);
+        var team = {
+          number: row.team_number,
+          name: row.team_name || ("チーム" + row.team_number),
+          members: members,
+          code: row.team_code
+        };
+        memoStandaloneEl.appendChild(
+          buildMemoEditor(team, { kind: "server", code: row.team_code }, row.memo || "")
+        );
+      }).catch(function () {
+        memoStandaloneEl.innerHTML = "";
+        var msg = document.createElement("p");
+        msg.className = "empty-message";
+        msg.textContent = "その番号のメモが見つかりませんでした。番号をご確認ください。";
+        memoStandaloneEl.appendChild(msg);
+      });
+    } else {
+      // ローカルのみ：番号＝チーム番号としてこの端末のメモを開く
+      var n = parseInt(raw, 10);
+      var team2 = { number: n, name: "チーム" + n, members: [], code: null };
+      memoStandaloneEl.appendChild(
+        buildMemoEditor(team2, { kind: "local", number: n }, getMemoText(n))
+      );
+    }
   }
 
   // チーム番号でメモへスクロール＆フォーカス
@@ -794,28 +1027,11 @@
     return v;
   }
 
-  function exportCsv() {
-    if (currentTeams.length === 0) {
-      window.alert("先にチーム分けをしてください。");
-      return;
-    }
-    var rows = [
-      ["team_number", "team_name", "members", "memo"]
-    ];
-    currentTeams.forEach(function (team) {
-      rows.push([
-        team.number,
-        team.name,
-        team.members.join(" / "),
-        getMemoText(team.number)
-      ]);
-    });
-
+  // BOM付きでCSVをダウンロード（ExcelでもUTF-8日本語が文字化けしない）
+  function downloadCsv(rows) {
     var csv = rows
       .map(function (r) { return r.map(csvField).join(","); })
       .join("\r\n");
-
-    // ExcelでもUTF-8の日本語が文字化けしないようBOMを付与
     var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
@@ -828,12 +1044,41 @@
     URL.revokeObjectURL(url);
   }
 
+  function exportCsv() {
+    // サーバー連携＆発行済みなら、全端末で書かれた最新メモをまとめて取得して出力
+    if (apiEnabled() && currentSession && currentSession.session_code) {
+      apiGet({ session: currentSession.session_code }).then(function (res) {
+        var rows = [["team_number", "team_name", "members", "memo", "team_code"]];
+        (res.teams || []).forEach(function (t) {
+          var members = (t.members || "").split(/\r?\n/).filter(Boolean).join(" / ");
+          rows.push([t.team_number, t.team_name, members, t.memo || "", t.team_code]);
+        });
+        downloadCsv(rows);
+      }).catch(function () {
+        window.alert("CSVの取得に失敗しました（通信エラー）。");
+      });
+      return;
+    }
+
+    // ローカルのみ
+    if (currentTeams.length === 0) {
+      window.alert("先にチーム分けをしてください。");
+      return;
+    }
+    var rows = [["team_number", "team_name", "members", "memo"]];
+    currentTeams.forEach(function (team) {
+      rows.push([team.number, team.name, team.members.join(" / "), getMemoText(team.number)]);
+    });
+    downloadCsv(rows);
+  }
+
   function switchTab(name) {
     tabs.forEach(function (t) {
       t.classList.toggle("active", t.getAttribute("data-tab") === name);
     });
     document.getElementById("tab-roulette").hidden = name !== "roulette";
     document.getElementById("tab-list").hidden = name !== "list";
+    document.getElementById("tab-memo").hidden = name !== "memo";
   }
 
   // ---- イベント ----
@@ -850,8 +1095,11 @@
     rRoleNameInput.focus();
   });
 
-  rStartBtn.addEventListener("click", startRoulette);
-  listStartBtn.addEventListener("click", startListRoulette);
+  // 最初のタップで音声エンジンを解錠（iOS Safari対策）
+  document.addEventListener("pointerdown", primeSpeech, { once: true });
+
+  rStartBtn.addEventListener("click", function () { primeSpeech(); startRoulette(); });
+  listStartBtn.addEventListener("click", function () { primeSpeech(); startListRoulette(); });
   revealBtn.addEventListener("click", onReveal);
   nextBtn.addEventListener("click", nextStep);
   abortBtn.addEventListener("click", exitStage);
@@ -866,6 +1114,8 @@
   backBtn.addEventListener("click", exitStage);
   memoOpenBtn.addEventListener("click", openMemoByNumber);
   exportCsvBtn.addEventListener("click", exportCsv);
+  issueCodesBtn.addEventListener("click", issueCodes);
+  memoOpenStandaloneBtn.addEventListener("click", openStandaloneMemo);
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
