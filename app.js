@@ -8,7 +8,6 @@
 
   // メモ機能（共有付箋ボード）
   var API = "api/api.php"; // Xserver上の同じ場所のapiフォルダを想定
-  var AUTHOR_KEY = "team-division-author";
   var CATS = [
     { key: "議題", color: "#3b82f6" },
     { key: "良い点", color: "#10b981" },
@@ -92,7 +91,6 @@
   var catChipsEl = document.getElementById("cat-chips");
   var noteForm = document.getElementById("note-form");
   var noteInput = document.getElementById("note-input");
-  var memoAuthorEl = document.getElementById("memo-author");
   var memoBoardEl = document.getElementById("memo-board");
   var memoEmptyEl = document.getElementById("memo-empty");
   var rosterText = document.getElementById("roster-text");
@@ -840,7 +838,6 @@
       memoCodeEl.textContent = "No. " + res.board.code;
       rosterText.value = (res.board.roster != null && res.board.roster !== "")
         ? res.board.roster : buildRosterTemplate();
-      memoAuthorEl.value = localStorage.getItem(AUTHOR_KEY) || "";
       memoCat = CATS[0].key;
       buildCatChips();
       renderNotes(res.notes);
@@ -917,9 +914,7 @@
   function addNote() {
     var text = noteInput.value.trim();
     if (!text || !memoCode) return;
-    var author = memoAuthorEl.value.trim();
-    try { localStorage.setItem(AUTHOR_KEY, author); } catch (e) {}
-    apiPost("add_note", { code: memoCode, category: memoCat, body: text, author: author }).then(function (res) {
+    apiPost("add_note", { code: memoCode, category: memoCat, body: text }).then(function (res) {
       if (res && res.note) { noteInput.value = ""; refreshBoard(); }
       else window.alert("保存に失敗しました");
     }).catch(function () { window.alert("保存に失敗しました（接続不可）"); });
