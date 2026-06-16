@@ -518,19 +518,26 @@
       revealBtn.textContent = teamName(s) + "の発表はこちら ▶";
       revealBtn.hidden = false;
     } else {
-      // 1人ずつ：自動でルーレット
+      // 1人ずつ：ボタンを押すまでチームは「？」のまま（前の人の結果を見せない）
       progressEl.textContent = rTotal + "人中 " + (s + 1) + "人目";
       personEl.textContent = rLabels[s];
       reelEl.hidden = false;
-      spinPerson(s);
+      reelTeamEl.textContent = "？";
+      reelRoleEl.textContent = "";
+      revealBtn.textContent = "🎲 自分のチームを見る";
+      revealBtn.hidden = false;
     }
   }
 
-  // 発表ボタン（team モード）を押したらリスト内でメンバー名をシャッフル
+  // 発表ボタンを押したらルーレット開始（person=自分のチーム / team=チームの一覧）
   function onReveal() {
     if (spinning) return;
     revealBtn.hidden = true;
-    spinTeam(rCurrent);
+    if (rMode === "team") {
+      spinTeam(rCurrent);
+    } else {
+      spinPerson(rCurrent);
+    }
   }
 
   function spinPerson(s) {
