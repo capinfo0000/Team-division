@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
   <div class="container">
@@ -20,6 +20,10 @@
     <div class="tabs" id="tabs-bar">
       <button type="button" class="tab active" data-tab="roulette">🎰 ルーレット抽選</button>
       <button type="button" class="tab" data-tab="list">📝 名前でチーム発表</button>
+    </div>
+
+    <div class="memo-entry" id="memo-entry">
+      <button type="button" id="open-memo" class="memo-open-btn">📒 チーム番号を入力してメモ帳を開く</button>
     </div>
 
     <!-- ===================== ルーレット抽選 ===================== -->
@@ -51,6 +55,11 @@
           <ul id="r-role-list" class="member-list"></ul>
           <p class="hint">人数が役割より多いチームでは「役割なし」、少ないチームでは1人が兼任します。</p>
         </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="r-voice" checked>
+          自分のチームが出たら音声で読み上げる
+        </label>
 
         <button type="button" id="r-start" class="btn btn-big btn-primary">▶ スタート</button>
       </section>
@@ -138,14 +147,16 @@
       <div class="result-header">
         <h2>結果一覧</h2>
         <div class="result-actions">
+          <button type="button" id="r-make-memo" class="btn btn-primary">🔗 共有メモを作成</button>
           <button type="button" id="r-again" class="btn btn-secondary">🔀 もう一度</button>
           <button type="button" id="r-back" class="btn btn-text">設定に戻る</button>
         </div>
       </div>
+      <p id="r-memo-hint" class="hint" hidden>各チームの番号を参加者に伝えてください。番号を入力するとそのチームのメモ帳が開きます。</p>
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 20</p>
+    <p class="ver">ver. 21</p>
   </div>
 
   <!-- 保存リスト（ポップアップ） -->
@@ -166,6 +177,49 @@
     </div>
   </div>
 
-  <script src="app.js?v=20"></script>
+  <!-- メモ帳を開く（番号入力ポップアップ） -->
+  <div id="memo-code-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="memo-code-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>📒 メモ帳を開く</h3>
+        <button type="button" id="memo-code-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <p class="hint">チーム分けで発行された番号を入力してください。</p>
+      <form id="memo-code-form" class="input-row">
+        <input type="tel" id="memo-code-input" inputmode="numeric" placeholder="例: 123456" autocomplete="off" maxlength="12">
+        <button type="submit" class="btn btn-primary">開く</button>
+      </form>
+      <p id="memo-code-error" class="empty-message" hidden>その番号のメモ帳が見つかりませんでした。</p>
+    </div>
+  </div>
+
+  <!-- メモ帳（付箋ボード） -->
+  <div id="memo-view" class="memo-view" hidden>
+    <div class="memo-head">
+      <div class="memo-title">
+        <span id="memo-team" class="memo-team">チーム</span>
+        <span id="memo-code" class="memo-code">#000000</span>
+      </div>
+      <div class="memo-actions">
+        <button type="button" id="memo-csv" class="btn btn-secondary">CSV出力</button>
+        <button type="button" id="memo-close" class="btn btn-text">閉じる</button>
+      </div>
+    </div>
+
+    <div class="memo-compose">
+      <div class="cat-chips" id="cat-chips"></div>
+      <form id="note-form" class="compose-row">
+        <input type="text" id="note-input" placeholder="ここに書いて Enter か「貼る」（落書きでOK）" autocomplete="off" maxlength="200">
+        <button type="submit" id="note-add" class="btn btn-primary">貼る</button>
+      </form>
+      <input type="text" id="memo-author" class="memo-author" placeholder="あなたの名前（任意）" autocomplete="off" maxlength="30">
+    </div>
+
+    <div id="memo-board" class="memo-board"></div>
+    <p id="memo-empty" class="empty-message">まだ付箋がありません。上から貼ってみましょう。</p>
+  </div>
+
+  <script src="app.js?v=21"></script>
 </body>
 </html>

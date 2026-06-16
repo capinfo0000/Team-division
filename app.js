@@ -6,6 +6,21 @@
   var ROLES_KEY = "team-division-roles";
   var DEFAULT_ROLES = ["書記", "発表", "司会", "タイムキーパー"];
 
+  // メモ機能（共有付箋ボード）
+  var API = "api/api.php"; // Xserver上の同じ場所のapiフォルダを想定
+  var AUTHOR_KEY = "team-division-author";
+  var CATS = [
+    { key: "議題", color: "#3b82f6" },
+    { key: "良い点", color: "#10b981" },
+    { key: "課題", color: "#ef4444" },
+    { key: "アイデア", color: "#f59e0b" },
+    { key: "質問", color: "#8b5cf6" },
+    { key: "メモ", color: "#6b7280" }
+  ];
+  var memoCode = null;
+  var memoCat = CATS[0].key;
+  var memoTimer = null;
+
   // ---- 状態 ----
   var members = loadMembers();
   var savedLists = loadSaved(); // { 名前: [メンバー...] }
@@ -61,9 +76,33 @@
   var backBtn = document.getElementById("r-back");
   var tabsBar = document.getElementById("tabs-bar");
   var listStartBtn = document.getElementById("list-start");
+  var rVoice = document.getElementById("r-voice");
+
+  // メモ機能 DOM
+  var makeMemoBtn = document.getElementById("r-make-memo");
+  var memoHint = document.getElementById("r-memo-hint");
+  var openMemoBtn = document.getElementById("open-memo");
+  var memoCodeModal = document.getElementById("memo-code-modal");
+  var memoCodeBackdrop = document.getElementById("memo-code-backdrop");
+  var memoCodeClose = document.getElementById("memo-code-close");
+  var memoCodeForm = document.getElementById("memo-code-form");
+  var memoCodeInput = document.getElementById("memo-code-input");
+  var memoCodeError = document.getElementById("memo-code-error");
+  var memoView = document.getElementById("memo-view");
+  var memoTeamEl = document.getElementById("memo-team");
+  var memoCodeEl = document.getElementById("memo-code");
+  var memoCsvBtn = document.getElementById("memo-csv");
+  var memoCloseBtn = document.getElementById("memo-close");
+  var catChipsEl = document.getElementById("cat-chips");
+  var noteForm = document.getElementById("note-form");
+  var noteInput = document.getElementById("note-input");
+  var memoAuthorEl = document.getElementById("memo-author");
+  var memoBoardEl = document.getElementById("memo-board");
+  var memoEmptyEl = document.getElementById("memo-empty");
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
+  var rBoards = null;      // 共有メモ作成後の [{code, team_label}]（チーム順）
   var rAssignments = [];
   var rLabels = [];        // 各参加者の表示名（名前 or 「N番目の人」）
   var rReturnTab = "roulette"; // 終了時に戻るタブ
@@ -333,6 +372,19 @@
     return roleArr.length > 0 ? roleArr.join(" / ") : "役割なし";
   }
 
+  // 結果を音声で読み上げ（対応ブラウザのみ）
+  function speak(text) {
+    if (!rVoice || !rVoice.checked) return;
+    if (typeof window.speechSynthesis === "undefined") return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP";
+      u.rate = 1;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* 非対応は無視 */ }
+  }
+
   // 人数・チーム数・役割から、全員分の割り当てを事前計算する
   function computeAssignments(count, teamCount, useRoles) {
     var teamOf = [];
@@ -376,6 +428,7 @@
     rAssignments = computeAssignments(rLabels.length, rTeamCount, rUseRoles);
     rTotal = rMode === "team" ? rTeamCount : rLabels.length;
     rCurrent = 0;
+    rBoards = null; // 新しい抽選なので共有メモはリセット
 
     // person モードのみリールに役割を出す（team モードは一覧側に表示）
     reelRoleEl.style.display =
@@ -494,12 +547,14 @@
       } else {
         var a = rAssignments[s];
         reelTeamEl.textContent = teamName(a.teamIndex);
-        reelRoleEl.textContent = roleLabel(a.roles);
+        var rLbl = roleLabel(a.roles);
+        reelRoleEl.textContent = rLbl;
         reelEl.classList.remove("spinning");
         reelEl.classList.add("settled");
         spinning = false;
         nextBtn.textContent = s === rTotal - 1 ? "結果を見る ▶" : "次の人へ ▶";
         nextBtn.hidden = false;
+        speak(teamName(a.teamIndex) + (rLbl ? "、" + rLbl : "")); // 音声読み上げ
       }
     }
     tick();
@@ -618,8 +673,51 @@
 
       div.appendChild(title);
       div.appendChild(ol);
+
+      // 共有メモ作成済みなら、このチームの番号と「メモを開く」を表示
+      if (rBoards && rBoards[t]) {
+        var codeRow = document.createElement("div");
+        codeRow.className = "team-code";
+        var codeNum = document.createElement("span");
+        codeNum.className = "code-num";
+        codeNum.textContent = "No. " + rBoards[t].code;
+        var openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "btn btn-secondary";
+        openBtn.textContent = "メモを開く";
+        (function (code) {
+          openBtn.addEventListener("click", function () { openBoard(code); });
+        })(rBoards[t].code);
+        codeRow.appendChild(codeNum);
+        codeRow.appendChild(openBtn);
+        div.appendChild(codeRow);
+      }
+
       summaryEl.appendChild(div);
     }
+  }
+
+  function makeMemo() {
+    if (!rTeamCount) return;
+    var labels = [];
+    for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
+    makeMemoBtn.disabled = true;
+    makeMemoBtn.textContent = "作成中…";
+    apiPost("create_boards", { teams: labels })
+      .then(function (res) {
+        if (!res || !res.boards) throw new Error("作成に失敗しました");
+        rBoards = res.boards; // サーバーは送信順で返す＝チーム順
+        memoHint.hidden = false;
+        makeMemoBtn.hidden = true;
+        showSummary();
+      })
+      .catch(function (e) {
+        window.alert("共有メモの作成に失敗しました。\nこの機能はサーバー版（Xserver）でのみ動作します。\n(" + e.message + ")");
+      })
+      .then(function () {
+        makeMemoBtn.disabled = false;
+        makeMemoBtn.textContent = "🔗 共有メモを作成";
+      });
   }
 
   function switchTab(name) {
@@ -628,6 +726,129 @@
     });
     document.getElementById("tab-roulette").hidden = name !== "roulette";
     document.getElementById("tab-list").hidden = name !== "list";
+  }
+
+  // ---- メモ帳（共有付箋ボード）----
+  function apiGet(action, qs) {
+    return fetch(API + "?action=" + action + (qs || "")).then(function (r) { return r.json(); });
+  }
+  function apiPost(action, body) {
+    return fetch(API + "?action=" + action, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); });
+  }
+  function catColor(key) {
+    for (var i = 0; i < CATS.length; i++) if (CATS[i].key === key) return CATS[i].color;
+    return "#6b7280";
+  }
+  function catTint(hex) {
+    var r = parseInt(hex.substr(1, 2), 16);
+    var g = parseInt(hex.substr(3, 2), 16);
+    var b = parseInt(hex.substr(5, 2), 16);
+    return "rgba(" + r + "," + g + "," + b + ",0.16)";
+  }
+  function buildCatChips() {
+    catChipsEl.innerHTML = "";
+    CATS.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "cat-chip" + (c.key === memoCat ? " active" : "");
+      b.textContent = c.key;
+      b.style.background = c.color;
+      b.addEventListener("click", function () { memoCat = c.key; buildCatChips(); noteInput.focus(); });
+      catChipsEl.appendChild(b);
+    });
+  }
+  function openBoard(code) {
+    apiGet("get_board", "&code=" + encodeURIComponent(code)).then(function (res) {
+      if (!res || res.error) {
+        if (!memoCodeModal.hidden) { memoCodeError.hidden = false; }
+        else { window.alert("その番号のメモ帳が見つかりませんでした。"); }
+        return;
+      }
+      memoCode = code;
+      memoCodeModal.hidden = true;
+      memoTeamEl.textContent = res.board.team_label;
+      memoCodeEl.textContent = "No. " + res.board.code;
+      memoAuthorEl.value = localStorage.getItem(AUTHOR_KEY) || "";
+      memoCat = CATS[0].key;
+      buildCatChips();
+      renderNotes(res.notes);
+      memoView.hidden = false;
+      try { location.hash = "memo=" + code; } catch (e) {}
+      if (memoTimer) clearInterval(memoTimer);
+      memoTimer = setInterval(refreshBoard, 4000); // 他端末の更新を取り込む
+    }).catch(function () {
+      window.alert("接続できませんでした。メモ機能はサーバー版（Xserver）で利用してください。");
+    });
+  }
+  function refreshBoard() {
+    if (!memoCode) return;
+    apiGet("get_board", "&code=" + encodeURIComponent(memoCode)).then(function (res) {
+      if (res && res.notes) renderNotes(res.notes);
+    }).catch(function () {});
+  }
+  function renderNotes(notes) {
+    memoBoardEl.innerHTML = "";
+    memoEmptyEl.hidden = notes.length > 0;
+    notes.forEach(function (n) {
+      var color = catColor(n.category);
+      var card = document.createElement("div");
+      card.className = "sticky";
+      card.style.background = catTint(color);
+      card.style.borderLeftColor = color;
+
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "sticky-del";
+      del.textContent = "×";
+      (function (id) { del.addEventListener("click", function () { deleteNote(id); }); })(n.id);
+
+      var cat = document.createElement("span");
+      cat.className = "sticky-cat";
+      cat.textContent = n.category;
+      cat.style.color = color;
+
+      var body = document.createElement("div");
+      body.className = "sticky-body";
+      body.textContent = n.body;
+
+      var meta = document.createElement("div");
+      meta.className = "sticky-meta";
+      var when = n.created_at ? String(n.created_at).substring(5, 16) : "";
+      meta.textContent = (n.author ? n.author + " · " : "") + when;
+
+      card.appendChild(del);
+      card.appendChild(cat);
+      card.appendChild(body);
+      card.appendChild(meta);
+      memoBoardEl.appendChild(card);
+    });
+  }
+  function addNote() {
+    var text = noteInput.value.trim();
+    if (!text || !memoCode) return;
+    var author = memoAuthorEl.value.trim();
+    try { localStorage.setItem(AUTHOR_KEY, author); } catch (e) {}
+    apiPost("add_note", { code: memoCode, category: memoCat, body: text, author: author }).then(function (res) {
+      if (res && res.note) { noteInput.value = ""; refreshBoard(); }
+      else window.alert("保存に失敗しました");
+    }).catch(function () { window.alert("保存に失敗しました（接続不可）"); });
+  }
+  function deleteNote(id) {
+    if (!window.confirm("この付箋を削除しますか？")) return;
+    apiPost("delete_note", { code: memoCode, id: id }).then(function () { refreshBoard(); }).catch(function () {});
+  }
+  function closeBoard() {
+    if (memoTimer) { clearInterval(memoTimer); memoTimer = null; }
+    memoCode = null;
+    memoView.hidden = true;
+    try { if (String(location.hash).indexOf("memo=") >= 0) location.hash = ""; } catch (e) {}
+  }
+  function exportCsv() {
+    if (memoCode) window.open(API + "?action=export_csv&code=" + encodeURIComponent(memoCode), "_blank");
   }
 
   // ---- イベント ----
@@ -657,6 +878,26 @@
     revealStep(0);
   });
   backBtn.addEventListener("click", exitStage);
+
+  // メモ機能
+  makeMemoBtn.addEventListener("click", makeMemo);
+  openMemoBtn.addEventListener("click", function () {
+    memoCodeError.hidden = true;
+    memoCodeInput.value = "";
+    memoCodeModal.hidden = false;
+    memoCodeInput.focus();
+  });
+  memoCodeClose.addEventListener("click", function () { memoCodeModal.hidden = true; });
+  memoCodeBackdrop.addEventListener("click", function () { memoCodeModal.hidden = true; });
+  memoCodeForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var c = memoCodeInput.value.trim();
+    memoCodeError.hidden = true;
+    if (c) openBoard(c);
+  });
+  noteForm.addEventListener("submit", function (e) { e.preventDefault(); addNote(); });
+  memoCsvBtn.addEventListener("click", exportCsv);
+  memoCloseBtn.addEventListener("click", closeBoard);
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -695,4 +936,10 @@
   renderSaved();
   renderRoles();
   updateUnit();
+  buildCatChips();
+  // 共有リンク（#memo=番号）で直接メモ帳を開く
+  (function () {
+    var m = String(location.hash || "").match(/memo=([0-9]+)/);
+    if (m) openBoard(m[1]);
+  })();
 })();
