@@ -103,6 +103,8 @@
   var rosterSaved = document.getElementById("roster-saved");
   var stageCodesEl = document.getElementById("stage-codes");
   var meetingTitleInput = document.getElementById("meeting-title");
+  var topicRowEl = document.getElementById("topic-row");
+  var memoEntryEl = document.getElementById("memo-entry");
   var openReportBtn = document.getElementById("open-report");
   var reportView = document.getElementById("report-view");
   var reportListEl = document.getElementById("report-list");
@@ -446,6 +448,8 @@
     reelRoleEl.style.display =
       rMode === "person" && rUseRoles && roles.length > 0 ? "block" : "none";
     tabsBar.hidden = true;
+    if (topicRowEl) topicRowEl.hidden = true;   // スタート後は議題名を変更不可
+    if (memoEntryEl) memoEntryEl.hidden = true; // ルーレット中は番号入力・集計を隠す
     document.getElementById("tab-roulette").hidden = true;
     document.getElementById("tab-list").hidden = true;
     summaryCard.hidden = true;
@@ -507,6 +511,8 @@
     stageCard.hidden = true;
     summaryCard.hidden = true;
     tabsBar.hidden = false;
+    if (topicRowEl) topicRowEl.hidden = false;
+    if (memoEntryEl) memoEntryEl.hidden = false;
     switchTab(rReturnTab);
   }
 
