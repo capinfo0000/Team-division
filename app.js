@@ -841,7 +841,7 @@
       }
       memoTabError.hidden = true;
       memoCode = code;
-      memoTeamEl.textContent = "📒 メモ帳"; // どのチームの付箋か分からないようにチーム名は出さない
+      memoTeamEl.textContent = res.board.team_label; // ヘッダーにはチーム名を表示
       memoCodeEl.textContent = "No. " + res.board.code;
       rosterText.value = (res.board.roster != null && res.board.roster !== "")
         ? res.board.roster : buildRosterTemplate();
@@ -1057,15 +1057,6 @@
         reportDetail.appendChild(bar(c.category, +c.cnt, maxC, catColor(c.category)));
       });
     }
-
-    var th = document.createElement("h4");
-    th.textContent = "チーム別";
-    reportDetail.appendChild(th);
-    var maxT = 1;
-    a.by_team.forEach(function (t) { if (+t.cnt > maxT) maxT = +t.cnt; });
-    a.by_team.forEach(function (t) {
-      reportDetail.appendChild(bar(t.team_label, +t.cnt, maxT, "#4f6ef7"));
-    });
 
     var csv = document.createElement("button");
     csv.className = "btn btn-secondary";

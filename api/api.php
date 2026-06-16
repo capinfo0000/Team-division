@@ -100,23 +100,14 @@ try {
     $mt->execute([$meeting]);
     $meta = $mt->fetch() ?: ['title' => '', 'team_count' => 0, 'created_at' => null];
 
+    // チーム別は出さない（匿名化）。カテゴリ別と合計のみ。
     $byCat = $pdo->prepare(
-      'SELECT n.category, COUNT(*) AS cnt
-       FROM notes n JOIN boards b ON n.board_id = b.id
-       WHERE b.meeting_id = ? GROUP BY n.category ORDER BY cnt DESC'
+      'SELECT category, COUNT(*) AS cnt FROM notes
+       WHERE meeting_id = ? GROUP BY category ORDER BY cnt DESC'
     );
     $byCat->execute([$meeting]);
 
-    $byTeam = $pdo->prepare(
-      'SELECT b.team_label, COUNT(n.id) AS cnt
-       FROM boards b LEFT JOIN notes n ON n.board_id = b.id
-       WHERE b.meeting_id = ? GROUP BY b.id ORDER BY b.team_label ASC'
-    );
-    $byTeam->execute([$meeting]);
-
-    $total = $pdo->prepare(
-      'SELECT COUNT(*) FROM notes n JOIN boards b ON n.board_id = b.id WHERE b.meeting_id = ?'
-    );
+    $total = $pdo->prepare('SELECT COUNT(*) FROM notes WHERE meeting_id = ?');
     $total->execute([$meeting]);
 
     jsonOut([
@@ -126,7 +117,6 @@ try {
       'created_at'   => $meta['created_at'],
       'total_notes'  => (int)$total->fetchColumn(),
       'by_category'  => $byCat->fetchAll(),
-      'by_team'      => $byTeam->fetchAll(),
     ]);
   }
 
@@ -134,8 +124,9 @@ try {
     $code = trim((string)($_GET['code'] ?? ''));
     $board = boardByCode($pdo, $code);
     if (!$board) jsonOut(['error' => 'not_found'], 404);
-    $st = $pdo->prepare('SELECT id, category, body, author, created_at FROM notes WHERE board_id = ? ORDER BY id ASC');
-    $st->execute([$board['id']]);
+    // 付箋は議題(meeting)単位で共有。チームには紐付けない。
+    $st = $pdo->prepare('SELECT id, category, body, created_at FROM notes WHERE meeting_id = ? ORDER BY id ASC');
+    $st->execute([$board['meeting_id']]);
     jsonOut([
       'board' => ['code' => $board['code'], 'team_label' => $board['team_label'], 'roster' => $board['roster']],
       'notes' => $st->fetchAll()
@@ -154,7 +145,7 @@ try {
   }
 
   if ($action === 'add_note') {
-    // body: { code, category, body, author }
+    // body: { code, category, body }  ※チームは保存しない
     $in = readJson();
     $code = trim((string)($in['code'] ?? ''));
     $board = boardByCode($pdo, $code);
@@ -164,12 +155,10 @@ try {
     $body = trim((string)($in['body'] ?? ''));
     if ($body === '') jsonOut(['error' => '本文が空です'], 400);
     $body = mb_substr($body, 0, 1000);
-    $author = mb_substr(trim((string)($in['author'] ?? '')), 0, 50);
-    if ($author === '') $author = null;
-    $ins = $pdo->prepare('INSERT INTO notes (board_id, category, body, author) VALUES (?, ?, ?, ?)');
-    $ins->execute([$board['id'], $category, $body, $author]);
+    $ins = $pdo->prepare('INSERT INTO notes (meeting_id, category, body) VALUES (?, ?, ?)');
+    $ins->execute([$board['meeting_id'], $category, $body]);
     $id = (int)$pdo->lastInsertId();
-    $st = $pdo->prepare('SELECT id, category, body, author, created_at FROM notes WHERE id = ?');
+    $st = $pdo->prepare('SELECT id, category, body, created_at FROM notes WHERE id = ?');
     $st->execute([$id]);
     jsonOut(['note' => $st->fetch()]);
   }
@@ -181,8 +170,8 @@ try {
     $id = (int)($in['id'] ?? 0);
     $board = boardByCode($pdo, $code);
     if (!$board) jsonOut(['error' => 'not_found'], 404);
-    $del = $pdo->prepare('DELETE FROM notes WHERE id = ? AND board_id = ?');
-    $del->execute([$id, $board['id']]);
+    $del = $pdo->prepare('DELETE FROM notes WHERE id = ? AND meeting_id = ?');
+    $del->execute([$id, $board['meeting_id']]);
     jsonOut(['ok' => true]);
   }
 
@@ -197,13 +186,13 @@ try {
     }
     if ($meeting === '') { http_response_code(400); echo 'code or meeting required'; exit; }
 
+    // チーム・メンバー・投稿者は出さない（匿名化）。議題＋カテゴリ＋メモのみ。
     $st = $pdo->prepare(
-      'SELECT b.meeting_id, COALESCE(m.title, \'\') AS title, b.team_label, n.category, n.body, n.author, n.created_at
+      'SELECT COALESCE(m.title, \'\') AS title, n.category, n.body, n.created_at
        FROM notes n
-       JOIN boards b ON n.board_id = b.id
-       LEFT JOIN meetings m ON m.meeting_id = b.meeting_id
-       WHERE b.meeting_id = ?
-       ORDER BY b.team_label ASC, n.id ASC'
+       LEFT JOIN meetings m ON m.meeting_id = n.meeting_id
+       WHERE n.meeting_id = ?
+       ORDER BY n.id ASC'
     );
     $st->execute([$meeting]);
 
@@ -211,9 +200,9 @@ try {
     header('Content-Disposition: attachment; filename="meeting_notes.csv"');
     echo "\xEF\xBB\xBF"; // Excel用BOM
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['ミーティングID', '議題', 'チーム', 'カテゴリ', 'メモ', '投稿者', '日時']);
+    fputcsv($out, ['議題', 'カテゴリ', 'メモ', '日時']);
     foreach ($st as $r) {
-      fputcsv($out, [$r['meeting_id'], $r['title'], $r['team_label'], $r['category'], $r['body'], $r['author'] ?? '', $r['created_at']]);
+      fputcsv($out, [$r['title'], $r['category'], $r['body'], $r['created_at']]);
     }
     fclose($out);
     exit;

@@ -18,13 +18,13 @@ CREATE TABLE IF NOT EXISTS boards (
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 付箋メモ。プライバシーのため「どのチームか」は保存しない（議題=meeting単位のみ）。
+-- これにより、要約時にチーム＋メンバーから個人が特定されることを防ぐ。
 CREATE TABLE IF NOT EXISTS notes (
   id          INT AUTO_INCREMENT PRIMARY KEY,
-  board_id    INT          NOT NULL,
+  meeting_id  VARCHAR(40)  NOT NULL,                 -- 議題（ミーティング）単位。チームには紐付けない
   category    VARCHAR(20)  NOT NULL DEFAULT 'メモ',  -- 議題/良い点/課題/アイデア/質問/メモ
   body        TEXT         NOT NULL,                 -- 付箋の内容（落書き程度）
-  author      VARCHAR(50)  DEFAULT NULL,             -- 任意の名前
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX (board_id),
-  FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
+  INDEX (meeting_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
