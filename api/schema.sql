@@ -1,5 +1,5 @@
--- phpMyAdmin で対象データベースを選び、このSQLを「SQL」タブで実行してください。
--- 既にboards/notesを作成済みの場合は、下の meetings テーブルだけ追加で実行すればOKです。
+-- phpMyAdmin で対象データベースを選び、このSQL全体を「SQL」タブに貼り付けて1回実行するだけで
+-- 必要な3テーブル（meetings / boards / notes）がまとめて作成されます。
 
 CREATE TABLE IF NOT EXISTS meetings (
   id          INT AUTO_INCREMENT PRIMARY KEY,
