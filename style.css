@@ -642,3 +642,28 @@ input:focus {
   font-size: 0.95rem;
 }
 .sticky .sticky-del:hover { background: var(--danger); color: #fff; }
+
+/* ---- 先行発行したチーム番号の表示 ---- */
+.team-codes {
+  background: #eef1fe;
+  border: 1px solid #dbe2fe;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 0 0 20px;
+  text-align: left;
+}
+.team-codes .codes-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+.code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px dashed #dbe2fe;
+}
+.code-team { font-weight: 700; }
+.code-row .code-num { font-weight: 800; letter-spacing: 0.06em; margin-left: auto; }
+.code-row .btn { padding: 6px 12px; font-size: 0.85rem; }

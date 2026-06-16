@@ -99,6 +99,7 @@
   var memoAuthorEl = document.getElementById("memo-author");
   var memoBoardEl = document.getElementById("memo-board");
   var memoEmptyEl = document.getElementById("memo-empty");
+  var stageCodesEl = document.getElementById("stage-codes");
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
@@ -429,6 +430,9 @@
     rTotal = rMode === "team" ? rTeamCount : rLabels.length;
     rCurrent = 0;
     rBoards = null; // 新しい抽選なので共有メモはリセット
+    if (stageCodesEl) { stageCodesEl.hidden = true; stageCodesEl.innerHTML = ""; }
+    if (makeMemoBtn) makeMemoBtn.hidden = false;
+    if (memoHint) memoHint.hidden = true;
 
     // person モードのみリールに役割を出す（team モードは一覧側に表示）
     reelRoleEl.style.display =
@@ -439,6 +443,7 @@
     summaryCard.hidden = true;
     stageCard.hidden = false;
     revealStep(0);
+    issueBoards(); // チーム数は確定しているので番号を先に発行・表示
   }
 
   // ルーレット抽選タブ：人数指定 → 1人ずつ発表
@@ -718,6 +723,53 @@
         makeMemoBtn.disabled = false;
         makeMemoBtn.textContent = "🔗 共有メモを作成";
       });
+  }
+
+  // チーム番号の一覧をパネルに描画（先行発行の表示用）
+  function renderTeamCodes(el) {
+    if (!el) return;
+    el.innerHTML = "";
+    if (!rBoards) { el.hidden = true; return; }
+    var title = document.createElement("div");
+    title.className = "codes-title";
+    title.textContent = "📒 メモ番号（参加者に共有）";
+    el.appendChild(title);
+    rBoards.forEach(function (b) {
+      var row = document.createElement("div");
+      row.className = "code-row";
+      var name = document.createElement("span");
+      name.className = "code-team";
+      name.textContent = b.team_label;
+      var num = document.createElement("span");
+      num.className = "code-num";
+      num.textContent = "No. " + b.code;
+      var open = document.createElement("button");
+      open.type = "button";
+      open.className = "btn btn-secondary";
+      open.textContent = "開く";
+      (function (code) { open.addEventListener("click", function () { openBoard(code); }); })(b.code);
+      row.appendChild(name);
+      row.appendChild(num);
+      row.appendChild(open);
+      el.appendChild(row);
+    });
+    el.hidden = false;
+  }
+
+  // スタート時に各チームの番号を先行発行（サーバー版でのみ成功・失敗は無視）
+  function issueBoards() {
+    if (rBoards) return;
+    var labels = [];
+    for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
+    apiPost("create_boards", { teams: labels }).then(function (res) {
+      if (res && res.boards) {
+        rBoards = res.boards;
+        renderTeamCodes(stageCodesEl);
+        if (makeMemoBtn) makeMemoBtn.hidden = true;
+        if (memoHint) memoHint.hidden = false;
+        if (!summaryCard.hidden) showSummary(); // 既に結果表示中なら反映
+      }
+    }).catch(function () { /* 静的環境では番号なし */ });
   }
 
   function switchTab(name) {
