@@ -100,6 +100,13 @@
   var listTitleInput = document.getElementById("meeting-title-list");
   var reportListEl = document.getElementById("report-list");
   var reportDetail = document.getElementById("report-detail");
+  var empForm = document.getElementById("emp-form");
+  var empName = document.getElementById("emp-name");
+  var empAge = document.getElementById("emp-age");
+  var empListEl = document.getElementById("emp-list");
+  var empEmpty = document.getElementById("emp-empty");
+  var empDatalist = document.getElementById("emp-datalist");
+  var employees = [];
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
@@ -780,7 +787,7 @@
     }).catch(function () { /* 静的環境では番号なし */ });
   }
 
-  var TAB_IDS = ["tab-roulette", "tab-list", "tab-memo", "tab-report"];
+  var TAB_IDS = ["tab-roulette", "tab-list", "tab-memo", "tab-report", "tab-employees"];
   function hideAllTabPanels() {
     TAB_IDS.forEach(function (id) { document.getElementById(id).hidden = true; });
   }
@@ -792,7 +799,9 @@
     document.getElementById("tab-list").hidden = name !== "list";
     document.getElementById("tab-memo").hidden = name !== "memo";
     document.getElementById("tab-report").hidden = name !== "report";
+    document.getElementById("tab-employees").hidden = name !== "employees";
     if (name === "report") loadReport();
+    if (name === "employees") loadEmployees();
   }
   // 現在のモードに応じた議題名を取得
   function getMeetingTitle() {
@@ -947,7 +956,11 @@
     reportListEl.innerHTML = '<p class="empty-message">読み込み中…</p>';
     apiGet("list_meetings").then(function (res) {
       if (!res || !res.meetings) {
-        reportListEl.innerHTML = '<p class="empty-message">取得できませんでした（メモ機能はサーバー版で利用してください）。</p>';
+        var msg = (res && res.error)
+          ? "取得できませんでした：" + res.error
+          : "取得できませんでした（メモ機能はサーバー版で利用してください）。";
+        reportListEl.innerHTML = '<p class="empty-message"></p>';
+        reportListEl.firstChild.textContent = msg;
         return;
       }
       renderMeetings(res.meetings);
@@ -1071,6 +1084,93 @@
     reportDetail.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // ---- 社員一覧 ----
+  function loadEmployees() {
+    apiGet("list_employees").then(function (res) {
+      if (res && res.employees) {
+        employees = res.employees;
+        renderEmployees();
+        renderEmpDatalist();
+      } else if (empEmpty) {
+        empEmpty.textContent = "取得できませんでした" + (res && res.error ? "：" + res.error : "（サーバー版で利用してください）");
+        empEmpty.hidden = false;
+      }
+    }).catch(function () {
+      if (empEmpty) {
+        empEmpty.textContent = "接続できませんでした（メモ機能はサーバー版で利用してください）。";
+        empEmpty.hidden = false;
+      }
+    });
+  }
+  function renderEmpDatalist() {
+    if (!empDatalist) return;
+    empDatalist.innerHTML = "";
+    employees.forEach(function (e) {
+      var opt = document.createElement("option");
+      opt.value = e.name;
+      if (e.age !== null && e.age !== undefined && e.age !== "") opt.label = e.name + "（" + e.age + "）";
+      empDatalist.appendChild(opt);
+    });
+  }
+  function renderEmployees() {
+    empListEl.innerHTML = "";
+    empEmpty.hidden = employees.length > 0;
+    employees.forEach(function (e) {
+      var li = document.createElement("li");
+      var name = document.createElement("span");
+      name.className = "emp-name";
+      name.textContent = e.name;
+      var age = document.createElement("span");
+      age.className = "emp-age";
+      age.textContent = (e.age !== null && e.age !== undefined && e.age !== "") ? e.age + "歳" : "—";
+      var edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "btn btn-secondary";
+      edit.textContent = "編集";
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn btn-text";
+      del.textContent = "削除";
+      (function (emp) {
+        edit.addEventListener("click", function () { editEmployee(emp); });
+        del.addEventListener("click", function () { deleteEmployee(emp); });
+      })(e);
+      li.appendChild(name);
+      li.appendChild(age);
+      li.appendChild(edit);
+      li.appendChild(del);
+      empListEl.appendChild(li);
+    });
+  }
+  function saveEmployee(payload) {
+    apiPost("save_employee", payload).then(function (res) {
+      if (res && res.employee) loadEmployees();
+      else window.alert("保存に失敗しました" + (res && res.error ? "：" + res.error : ""));
+    }).catch(function () { window.alert("保存に失敗しました（接続不可）"); });
+  }
+  function addEmployeeFromForm() {
+    var name = empName.value.trim();
+    if (!name) return;
+    var age = empAge.value.trim();
+    saveEmployee({ name: name, age: age });
+    empName.value = "";
+    empAge.value = "";
+    empName.focus();
+  }
+  function editEmployee(emp) {
+    var name = window.prompt("名前", emp.name);
+    if (name === null) return;
+    name = name.trim();
+    if (!name) return;
+    var ageStr = window.prompt("年齢（空欄可）", (emp.age !== null && emp.age !== undefined) ? emp.age : "");
+    if (ageStr === null) return;
+    saveEmployee({ id: emp.id, name: name, age: ageStr.trim() });
+  }
+  function deleteEmployee(emp) {
+    if (!window.confirm("「" + emp.name + "」を社員一覧から削除しますか？")) return;
+    apiPost("delete_employee", { id: emp.id }).then(function () { loadEmployees(); }).catch(function () {});
+  }
+
   // ---- イベント ----
   tabs.forEach(function (t) {
     t.addEventListener("click", function () {
@@ -1107,6 +1207,7 @@
     var c = memoTabInput.value.trim();
     if (c) openBoard(c);
   });
+  empForm.addEventListener("submit", function (e) { e.preventDefault(); addEmployeeFromForm(); });
   noteForm.addEventListener("submit", function (e) { e.preventDefault(); addNote(); });
   rosterText.addEventListener("blur", saveRoster);
   memoCsvBtn.addEventListener("click", exportCsv);
@@ -1150,6 +1251,7 @@
   renderRoles();
   updateUnit();
   buildCatChips();
+  loadEmployees(); // メンバー登録の検索プルダウン用に社員一覧を読み込む（サーバー版のみ）
   // 共有リンク（#memo=番号）で直接メモ帳を開く
   (function () {
     var m = String(location.hash || "").match(/memo=([0-9]+)/);

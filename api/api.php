@@ -75,6 +75,35 @@ try {
     jsonOut(['meeting_id' => $meeting, 'title' => $title, 'boards' => $boards]);
   }
 
+  if ($action === 'list_employees') {
+    $rows = $pdo->query('SELECT id, name, age FROM employees ORDER BY name ASC')->fetchAll();
+    jsonOut(['employees' => $rows]);
+  }
+
+  if ($action === 'save_employee') {
+    // body: { id?, name, age }
+    $in = readJson();
+    $name = mb_substr(trim((string)($in['name'] ?? '')), 0, 50);
+    if ($name === '') jsonOut(['error' => '名前が必要です'], 400);
+    $ageRaw = $in['age'] ?? '';
+    $age = ($ageRaw === '' || $ageRaw === null) ? null : (int)$ageRaw;
+    $id = (int)($in['id'] ?? 0);
+    if ($id > 0) {
+      $pdo->prepare('UPDATE employees SET name = ?, age = ? WHERE id = ?')->execute([$name, $age, $id]);
+    } else {
+      $pdo->prepare('INSERT INTO employees (name, age) VALUES (?, ?)')->execute([$name, $age]);
+      $id = (int)$pdo->lastInsertId();
+    }
+    jsonOut(['employee' => ['id' => $id, 'name' => $name, 'age' => $age]]);
+  }
+
+  if ($action === 'delete_employee') {
+    $in = readJson();
+    $id = (int)($in['id'] ?? 0);
+    $pdo->prepare('DELETE FROM employees WHERE id = ?')->execute([$id]);
+    jsonOut(['ok' => true]);
+  }
+
   if ($action === 'list_meetings') {
     // ミーティング（議題）単位の一覧。古いデータ（meetings行なし）も拾う。
     $sql =

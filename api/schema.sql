@@ -1,6 +1,14 @@
 -- phpMyAdmin で対象データベースを選び、このSQL全体を「SQL」タブに貼り付けて1回実行するだけで
 -- 必要な3テーブル（meetings / boards / notes）がまとめて作成されます。
 
+-- 社員一覧（名前・年齢）。チーム分けのメンバー候補にも使う。
+CREATE TABLE IF NOT EXISTS employees (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  name        VARCHAR(50)  NOT NULL,
+  age         INT          NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS meetings (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   meeting_id  VARCHAR(40)  NOT NULL UNIQUE,      -- 1回のチーム分け＝1ミーティング
