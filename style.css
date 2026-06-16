@@ -667,3 +667,44 @@ input:focus {
 .code-team { font-weight: 700; }
 .code-row .code-num { font-weight: 800; letter-spacing: 0.06em; margin-left: auto; }
 .code-row .btn { padding: 6px 12px; font-size: 0.85rem; }
+
+/* ---- 議題名 ---- */
+.topic-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.topic-label { font-size: 0.85rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.topic-row input { flex: 1; }
+
+.memo-entry { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+/* ---- 集計ページ ---- */
+.report-body { flex: 1; overflow-y: auto; padding: 18px; max-width: 760px; margin: 0 auto; width: 100%; }
+.report-list h3 { font-size: 1.05rem; margin: 0 0 12px; }
+.report-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 10px;
+}
+.ri-title { font-weight: 700; font-size: 1.05rem; }
+.ri-sub { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+.report-item-btns { display: flex; gap: 8px; flex-shrink: 0; }
+.report-item-btns .btn { padding: 8px 12px; font-size: 0.85rem; }
+
+.report-detail {
+  margin-top: 18px; background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 20px;
+}
+.report-detail h3 { margin: 0 0 4px; }
+.report-detail h4 { margin: 18px 0 8px; font-size: 0.95rem; }
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bar-label { flex: 0 0 90px; font-weight: 600; font-size: 0.9rem; }
+.bar-track { flex: 1; background: var(--bg); border-radius: 999px; height: 16px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 999px; min-width: 2px; }
+.bar-val { flex: 0 0 auto; font-weight: 700; font-size: 0.9rem; width: 30px; text-align: right; }

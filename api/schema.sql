@@ -1,4 +1,13 @@
 -- phpMyAdmin で対象データベースを選び、このSQLを「SQL」タブで実行してください。
+-- 既にboards/notesを作成済みの場合は、下の meetings テーブルだけ追加で実行すればOKです。
+
+CREATE TABLE IF NOT EXISTS meetings (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  meeting_id  VARCHAR(40)  NOT NULL UNIQUE,      -- 1回のチーム分け＝1ミーティング
+  title       VARCHAR(100) NOT NULL DEFAULT '',  -- 議題名
+  team_count  INT          NOT NULL DEFAULT 0,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS boards (
   id          INT AUTO_INCREMENT PRIMARY KEY,

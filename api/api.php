@@ -42,11 +42,14 @@ try {
   $pdo = db();
 
   if ($action === 'create_boards') {
-    // body: { teams: ["Aチーム", ...] }
+    // body: { title?: "議題名", teams: ["Aチーム", ...] }
     $in = readJson();
     $teams = $in['teams'] ?? [];
     if (!is_array($teams) || count($teams) === 0) jsonOut(['error' => 'teams が必要です'], 400);
+    $title = mb_substr(trim((string)($in['title'] ?? '')), 0, 100);
     $meeting = bin2hex(random_bytes(8));
+    $pdo->prepare('INSERT INTO meetings (meeting_id, title, team_count) VALUES (?, ?, ?)')
+        ->execute([$meeting, $title, count($teams)]);
     $ins = $pdo->prepare('INSERT INTO boards (code, meeting_id, team_label) VALUES (?, ?, ?)');
     $boards = [];
     foreach ($teams as $label) {
@@ -56,7 +59,62 @@ try {
       $ins->execute([$code, $meeting, $label]);
       $boards[] = ['code' => $code, 'team_label' => $label];
     }
-    jsonOut(['meeting_id' => $meeting, 'boards' => $boards]);
+    jsonOut(['meeting_id' => $meeting, 'title' => $title, 'boards' => $boards]);
+  }
+
+  if ($action === 'list_meetings') {
+    // ミーティング（議題）単位の一覧。古いデータ（meetings行なし）も拾う。
+    $sql =
+      "SELECT b.meeting_id,
+              COALESCE(m.title, '') AS title,
+              COUNT(DISTINCT b.id) AS team_count,
+              MIN(b.created_at) AS created_at,
+              (SELECT COUNT(*) FROM notes n JOIN boards bb ON n.board_id = bb.id
+               WHERE bb.meeting_id = b.meeting_id) AS note_count
+       FROM boards b
+       LEFT JOIN meetings m ON m.meeting_id = b.meeting_id
+       GROUP BY b.meeting_id, m.title
+       ORDER BY created_at DESC";
+    jsonOut(['meetings' => $pdo->query($sql)->fetchAll()]);
+  }
+
+  if ($action === 'aggregate') {
+    // ?meeting=xxx → そのミーティングの集計
+    $meeting = trim((string)($_GET['meeting'] ?? ''));
+    if ($meeting === '') jsonOut(['error' => 'meeting required'], 400);
+
+    $mt = $pdo->prepare('SELECT title, team_count, created_at FROM meetings WHERE meeting_id = ?');
+    $mt->execute([$meeting]);
+    $meta = $mt->fetch() ?: ['title' => '', 'team_count' => 0, 'created_at' => null];
+
+    $byCat = $pdo->prepare(
+      'SELECT n.category, COUNT(*) AS cnt
+       FROM notes n JOIN boards b ON n.board_id = b.id
+       WHERE b.meeting_id = ? GROUP BY n.category ORDER BY cnt DESC'
+    );
+    $byCat->execute([$meeting]);
+
+    $byTeam = $pdo->prepare(
+      'SELECT b.team_label, COUNT(n.id) AS cnt
+       FROM boards b LEFT JOIN notes n ON n.board_id = b.id
+       WHERE b.meeting_id = ? GROUP BY b.id ORDER BY b.team_label ASC'
+    );
+    $byTeam->execute([$meeting]);
+
+    $total = $pdo->prepare(
+      'SELECT COUNT(*) FROM notes n JOIN boards b ON n.board_id = b.id WHERE b.meeting_id = ?'
+    );
+    $total->execute([$meeting]);
+
+    jsonOut([
+      'meeting_id'   => $meeting,
+      'title'        => $meta['title'],
+      'team_count'   => (int)$meta['team_count'],
+      'created_at'   => $meta['created_at'],
+      'total_notes'  => (int)$total->fetchColumn(),
+      'by_category'  => $byCat->fetchAll(),
+      'by_team'      => $byTeam->fetchAll(),
+    ]);
   }
 
   if ($action === 'get_board') {
@@ -113,8 +171,10 @@ try {
     if ($meeting === '') { http_response_code(400); echo 'code or meeting required'; exit; }
 
     $st = $pdo->prepare(
-      'SELECT b.meeting_id, b.team_label, n.category, n.body, n.author, n.created_at
-       FROM notes n JOIN boards b ON n.board_id = b.id
+      'SELECT b.meeting_id, COALESCE(m.title, \'\') AS title, b.team_label, n.category, n.body, n.author, n.created_at
+       FROM notes n
+       JOIN boards b ON n.board_id = b.id
+       LEFT JOIN meetings m ON m.meeting_id = b.meeting_id
        WHERE b.meeting_id = ?
        ORDER BY b.team_label ASC, n.id ASC'
     );
@@ -124,9 +184,9 @@ try {
     header('Content-Disposition: attachment; filename="meeting_notes.csv"');
     echo "\xEF\xBB\xBF"; // Excel用BOM
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['ミーティングID', 'チーム', 'カテゴリ', 'メモ', '投稿者', '日時']);
+    fputcsv($out, ['ミーティングID', '議題', 'チーム', 'カテゴリ', 'メモ', '投稿者', '日時']);
     foreach ($st as $r) {
-      fputcsv($out, [$r['meeting_id'], $r['team_label'], $r['category'], $r['body'], $r['author'] ?? '', $r['created_at']]);
+      fputcsv($out, [$r['meeting_id'], $r['title'], $r['team_label'], $r['category'], $r['body'], $r['author'] ?? '', $r['created_at']]);
     }
     fclose($out);
     exit;

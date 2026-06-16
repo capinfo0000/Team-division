@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
   <div class="container">
@@ -15,6 +15,12 @@
       <h1>🎲 チーム分けアプリ</h1>
       <p class="subtitle">人数だけで抽選、または名前を入力してチーム単位で発表</p>
     </header>
+
+    <!-- 議題名（チーム作成前に付けられる） -->
+    <div class="topic-row">
+      <label class="topic-label" for="meeting-title">議題名（任意）</label>
+      <input type="text" id="meeting-title" placeholder="例: 1月度 定例ミーティング" autocomplete="off" maxlength="100">
+    </div>
 
     <!-- タブ -->
     <div class="tabs" id="tabs-bar">
@@ -24,6 +30,7 @@
 
     <div class="memo-entry" id="memo-entry">
       <button type="button" id="open-memo" class="memo-open-btn">📒 チーム番号を入力してメモ帳を開く</button>
+      <button type="button" id="open-report" class="memo-open-btn">📊 集計を見る</button>
     </div>
 
     <!-- ===================== ルーレット抽選 ===================== -->
@@ -158,7 +165,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 22</p>
+    <p class="ver">ver. 23</p>
   </div>
 
   <!-- 保存リスト（ポップアップ） -->
@@ -222,6 +229,20 @@
     <p id="memo-empty" class="empty-message">まだ付箋がありません。上から貼ってみましょう。</p>
   </div>
 
-  <script src="app.js?v=22"></script>
+  <!-- 集計ページ -->
+  <div id="report-view" class="memo-view" hidden>
+    <div class="memo-head">
+      <div class="memo-title"><span class="memo-team">📊 集計</span></div>
+      <div class="memo-actions">
+        <button type="button" id="report-close" class="btn btn-text">閉じる</button>
+      </div>
+    </div>
+    <div class="report-body">
+      <div id="report-list" class="report-list"></div>
+      <div id="report-detail" class="report-detail" hidden></div>
+    </div>
+  </div>
+
+  <script src="app.js?v=23"></script>
 </body>
 </html>

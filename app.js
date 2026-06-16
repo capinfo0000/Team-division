@@ -100,6 +100,12 @@
   var memoBoardEl = document.getElementById("memo-board");
   var memoEmptyEl = document.getElementById("memo-empty");
   var stageCodesEl = document.getElementById("stage-codes");
+  var meetingTitleInput = document.getElementById("meeting-title");
+  var openReportBtn = document.getElementById("open-report");
+  var reportView = document.getElementById("report-view");
+  var reportListEl = document.getElementById("report-list");
+  var reportDetail = document.getElementById("report-detail");
+  var reportCloseBtn = document.getElementById("report-close");
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
@@ -708,7 +714,8 @@
     for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
     makeMemoBtn.disabled = true;
     makeMemoBtn.textContent = "作成中…";
-    apiPost("create_boards", { teams: labels })
+    var title = meetingTitleInput ? meetingTitleInput.value.trim() : "";
+    apiPost("create_boards", { title: title, teams: labels })
       .then(function (res) {
         if (!res || !res.boards) throw new Error("作成に失敗しました");
         rBoards = res.boards; // サーバーは送信順で返す＝チーム順
@@ -761,7 +768,8 @@
     if (rBoards) return;
     var labels = [];
     for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
-    apiPost("create_boards", { teams: labels }).then(function (res) {
+    var title = meetingTitleInput ? meetingTitleInput.value.trim() : "";
+    apiPost("create_boards", { title: title, teams: labels }).then(function (res) {
       if (res && res.boards) {
         rBoards = res.boards;
         renderTeamCodes(stageCodesEl);
@@ -903,6 +911,148 @@
     if (memoCode) window.open(API + "?action=export_csv&code=" + encodeURIComponent(memoCode), "_blank");
   }
 
+  // ---- 集計ページ ----
+  function openReport() {
+    reportDetail.hidden = true;
+    reportDetail.innerHTML = "";
+    reportListEl.innerHTML = '<p class="empty-message">読み込み中…</p>';
+    reportView.hidden = false;
+    apiGet("list_meetings").then(function (res) {
+      if (!res || !res.meetings) {
+        reportListEl.innerHTML = '<p class="empty-message">取得できませんでした（メモ機能はサーバー版で利用してください）。</p>';
+        return;
+      }
+      renderMeetings(res.meetings);
+    }).catch(function () {
+      reportListEl.innerHTML = '<p class="empty-message">接続できませんでした（メモ機能はサーバー版で利用してください）。</p>';
+    });
+  }
+  function renderMeetings(list) {
+    reportListEl.innerHTML = "";
+    var h = document.createElement("h3");
+    h.textContent = "ミーティング一覧（議題ごとに分かれています）";
+    reportListEl.appendChild(h);
+    if (list.length === 0) {
+      var e = document.createElement("p");
+      e.className = "empty-message";
+      e.textContent = "まだ集計できるデータがありません。";
+      reportListEl.appendChild(e);
+      return;
+    }
+    list.forEach(function (m) {
+      var item = document.createElement("div");
+      item.className = "report-item";
+      var info = document.createElement("div");
+      var t = document.createElement("div");
+      t.className = "ri-title";
+      t.textContent = (m.title && String(m.title).trim()) ? m.title : "(無題)";
+      var sub = document.createElement("div");
+      sub.className = "ri-sub";
+      var date = m.created_at ? String(m.created_at).substring(0, 16) : "";
+      sub.textContent = date + " ／ " + m.team_count + "チーム ／ " + m.note_count + "メモ";
+      info.appendChild(t);
+      info.appendChild(sub);
+
+      var btns = document.createElement("div");
+      btns.className = "report-item-btns";
+      var view = document.createElement("button");
+      view.className = "btn btn-primary";
+      view.textContent = "集計を見る";
+      var csv = document.createElement("button");
+      csv.className = "btn btn-secondary";
+      csv.textContent = "CSV";
+      (function (id) {
+        view.addEventListener("click", function () { openAggregate(id); });
+        csv.addEventListener("click", function () {
+          window.open(API + "?action=export_csv&meeting=" + encodeURIComponent(id), "_blank");
+        });
+      })(m.meeting_id);
+      btns.appendChild(view);
+      btns.appendChild(csv);
+
+      item.appendChild(info);
+      item.appendChild(btns);
+      reportListEl.appendChild(item);
+    });
+  }
+  function openAggregate(meetingId) {
+    apiGet("aggregate", "&meeting=" + encodeURIComponent(meetingId)).then(function (a) {
+      if (!a || a.error) return;
+      renderAggregate(a);
+    }).catch(function () {});
+  }
+  function bar(label, cnt, max, color) {
+    var row = document.createElement("div");
+    row.className = "bar-row";
+    var lab = document.createElement("span");
+    lab.className = "bar-label";
+    lab.textContent = label;
+    var track = document.createElement("span");
+    track.className = "bar-track";
+    var fill = document.createElement("span");
+    fill.className = "bar-fill";
+    fill.style.width = Math.round((cnt / max) * 100) + "%";
+    fill.style.background = color;
+    track.appendChild(fill);
+    var val = document.createElement("span");
+    val.className = "bar-val";
+    val.textContent = cnt;
+    row.appendChild(lab);
+    row.appendChild(track);
+    row.appendChild(val);
+    return row;
+  }
+  function renderAggregate(a) {
+    reportDetail.hidden = false;
+    reportDetail.innerHTML = "";
+    var h = document.createElement("h3");
+    h.textContent = "📊 " + ((a.title && String(a.title).trim()) ? a.title : "(無題)") + " の集計";
+    reportDetail.appendChild(h);
+    var meta = document.createElement("p");
+    meta.className = "hint";
+    var date = a.created_at ? String(a.created_at).substring(0, 16) : "";
+    meta.textContent = date + " ／ " + a.team_count + "チーム ／ 合計 " + a.total_notes + "メモ";
+    reportDetail.appendChild(meta);
+
+    var ch = document.createElement("h4");
+    ch.textContent = "カテゴリ別";
+    reportDetail.appendChild(ch);
+    if (a.by_category.length === 0) {
+      var e = document.createElement("p");
+      e.className = "empty-message";
+      e.textContent = "メモがありません。";
+      reportDetail.appendChild(e);
+    } else {
+      var maxC = 1;
+      a.by_category.forEach(function (c) { if (+c.cnt > maxC) maxC = +c.cnt; });
+      a.by_category.forEach(function (c) {
+        reportDetail.appendChild(bar(c.category, +c.cnt, maxC, catColor(c.category)));
+      });
+    }
+
+    var th = document.createElement("h4");
+    th.textContent = "チーム別";
+    reportDetail.appendChild(th);
+    var maxT = 1;
+    a.by_team.forEach(function (t) { if (+t.cnt > maxT) maxT = +t.cnt; });
+    a.by_team.forEach(function (t) {
+      reportDetail.appendChild(bar(t.team_label, +t.cnt, maxT, "#4f6ef7"));
+    });
+
+    var csv = document.createElement("button");
+    csv.className = "btn btn-secondary";
+    csv.textContent = "このミーティングのCSVを出力";
+    csv.style.marginTop = "16px";
+    (function (id) {
+      csv.addEventListener("click", function () {
+        window.open(API + "?action=export_csv&meeting=" + encodeURIComponent(id), "_blank");
+      });
+    })(a.meeting_id);
+    reportDetail.appendChild(csv);
+    reportDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function closeReport() { reportView.hidden = true; }
+
   // ---- イベント ----
   tabs.forEach(function (t) {
     t.addEventListener("click", function () {
@@ -950,6 +1100,8 @@
   noteForm.addEventListener("submit", function (e) { e.preventDefault(); addNote(); });
   memoCsvBtn.addEventListener("click", exportCsv);
   memoCloseBtn.addEventListener("click", closeBoard);
+  openReportBtn.addEventListener("click", openReport);
+  reportCloseBtn.addEventListener("click", closeReport);
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
