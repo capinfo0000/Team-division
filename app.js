@@ -99,6 +99,8 @@
   var memoAuthorEl = document.getElementById("memo-author");
   var memoBoardEl = document.getElementById("memo-board");
   var memoEmptyEl = document.getElementById("memo-empty");
+  var rosterText = document.getElementById("roster-text");
+  var rosterSaved = document.getElementById("roster-saved");
   var stageCodesEl = document.getElementById("stage-codes");
   var meetingTitleInput = document.getElementById("meeting-title");
   var openReportBtn = document.getElementById("open-report");
@@ -715,7 +717,7 @@
     makeMemoBtn.disabled = true;
     makeMemoBtn.textContent = "作成中…";
     var title = meetingTitleInput ? meetingTitleInput.value.trim() : "";
-    apiPost("create_boards", { title: title, teams: labels })
+    apiPost("create_boards", { title: title, teams: labels, roles: roles })
       .then(function (res) {
         if (!res || !res.boards) throw new Error("作成に失敗しました");
         rBoards = res.boards; // サーバーは送信順で返す＝チーム順
@@ -769,7 +771,7 @@
     var labels = [];
     for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
     var title = meetingTitleInput ? meetingTitleInput.value.trim() : "";
-    apiPost("create_boards", { title: title, teams: labels }).then(function (res) {
+    apiPost("create_boards", { title: title, teams: labels, roles: roles }).then(function (res) {
       if (res && res.boards) {
         rBoards = res.boards;
         renderTeamCodes(stageCodesEl);
@@ -832,6 +834,8 @@
       memoCodeModal.hidden = true;
       memoTeamEl.textContent = res.board.team_label;
       memoCodeEl.textContent = "No. " + res.board.code;
+      rosterText.value = (res.board.roster != null && res.board.roster !== "")
+        ? res.board.roster : buildRosterTemplate();
       memoAuthorEl.value = localStorage.getItem(AUTHOR_KEY) || "";
       memoCat = CATS[0].key;
       buildCatChips();
@@ -848,6 +852,25 @@
     if (!memoCode) return;
     apiGet("get_board", "&code=" + encodeURIComponent(memoCode)).then(function (res) {
       if (res && res.notes) renderNotes(res.notes);
+      // 記入中でなければ他端末の更新を反映
+      if (res && res.board && document.activeElement !== rosterText) {
+        var v = res.board.roster != null ? res.board.roster : "";
+        if (v !== rosterText.value) rosterText.value = v;
+      }
+    }).catch(function () {});
+  }
+  function buildRosterTemplate() {
+    var lines = roles.map(function (r) { return r + "："; });
+    lines.push("メンバー：");
+    return lines.join("\n");
+  }
+  function saveRoster() {
+    if (!memoCode) return;
+    apiPost("save_roster", { code: memoCode, roster: rosterText.value }).then(function () {
+      if (rosterSaved) {
+        rosterSaved.hidden = false;
+        setTimeout(function () { rosterSaved.hidden = true; }, 1500);
+      }
     }).catch(function () {});
   }
   function renderNotes(notes) {
@@ -1098,6 +1121,7 @@
     if (c) openBoard(c);
   });
   noteForm.addEventListener("submit", function (e) { e.preventDefault(); addNote(); });
+  rosterText.addEventListener("blur", saveRoster);
   memoCsvBtn.addEventListener("click", exportCsv);
   memoCloseBtn.addEventListener("click", closeBoard);
   openReportBtn.addEventListener("click", openReport);

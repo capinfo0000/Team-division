@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=23">
+  <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
   <div class="container">
@@ -165,7 +165,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 23</p>
+    <p class="ver">ver. 24</p>
   </div>
 
   <!-- 保存リスト（ポップアップ） -->
@@ -216,6 +216,12 @@
       </div>
     </div>
 
+    <div class="memo-roster">
+      <div class="roster-head">👥 メンバー / 役割（名前を記入してください）</div>
+      <textarea id="roster-text" class="roster-text" rows="4" placeholder="司会：&#10;発表：&#10;メンバー："></textarea>
+      <span id="roster-saved" class="roster-saved" hidden>保存しました</span>
+    </div>
+
     <div class="memo-compose">
       <div class="cat-chips" id="cat-chips"></div>
       <form id="note-form" class="compose-row">
@@ -243,6 +249,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>

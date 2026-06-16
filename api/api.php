@@ -47,16 +47,29 @@ try {
     $teams = $in['teams'] ?? [];
     if (!is_array($teams) || count($teams) === 0) jsonOut(['error' => 'teams が必要です'], 400);
     $title = mb_substr(trim((string)($in['title'] ?? '')), 0, 100);
+
+    // メンバー記入欄のひな形（役割名 + メンバー）を作る
+    $roleNames = $in['roles'] ?? [];
+    $lines = [];
+    if (is_array($roleNames)) {
+      foreach ($roleNames as $rn) {
+        $rn = trim((string)$rn);
+        if ($rn !== '') $lines[] = $rn . '：';
+      }
+    }
+    $lines[] = 'メンバー：';
+    $roster = implode("\n", $lines);
+
     $meeting = bin2hex(random_bytes(8));
     $pdo->prepare('INSERT INTO meetings (meeting_id, title, team_count) VALUES (?, ?, ?)')
         ->execute([$meeting, $title, count($teams)]);
-    $ins = $pdo->prepare('INSERT INTO boards (code, meeting_id, team_label) VALUES (?, ?, ?)');
+    $ins = $pdo->prepare('INSERT INTO boards (code, meeting_id, team_label, roster) VALUES (?, ?, ?, ?)');
     $boards = [];
     foreach ($teams as $label) {
       $label = mb_substr(trim((string)$label), 0, 50);
       if ($label === '') $label = 'チーム';
       $code = genCode($pdo);
-      $ins->execute([$code, $meeting, $label]);
+      $ins->execute([$code, $meeting, $label, $roster]);
       $boards[] = ['code' => $code, 'team_label' => $label];
     }
     jsonOut(['meeting_id' => $meeting, 'title' => $title, 'boards' => $boards]);
@@ -123,7 +136,21 @@ try {
     if (!$board) jsonOut(['error' => 'not_found'], 404);
     $st = $pdo->prepare('SELECT id, category, body, author, created_at FROM notes WHERE board_id = ? ORDER BY id ASC');
     $st->execute([$board['id']]);
-    jsonOut(['board' => ['code' => $board['code'], 'team_label' => $board['team_label']], 'notes' => $st->fetchAll()]);
+    jsonOut([
+      'board' => ['code' => $board['code'], 'team_label' => $board['team_label'], 'roster' => $board['roster']],
+      'notes' => $st->fetchAll()
+    ]);
+  }
+
+  if ($action === 'save_roster') {
+    // body: { code, roster }
+    $in = readJson();
+    $code = trim((string)($in['code'] ?? ''));
+    $board = boardByCode($pdo, $code);
+    if (!$board) jsonOut(['error' => 'not_found'], 404);
+    $roster = mb_substr((string)($in['roster'] ?? ''), 0, 2000);
+    $pdo->prepare('UPDATE boards SET roster = ? WHERE id = ?')->execute([$roster, $board['id']]);
+    jsonOut(['ok' => true]);
   }
 
   if ($action === 'add_note') {

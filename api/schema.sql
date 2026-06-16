@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS boards (
   code        VARCHAR(12)  NOT NULL UNIQUE,      -- 他端末で入力するチーム番号
   meeting_id  VARCHAR(40)  NOT NULL,             -- 同じチーム分けをまとめるID
   team_label  VARCHAR(50)  NOT NULL,             -- 例: Aチーム
+  roster      TEXT         NULL,                 -- メンバー/役割の記入欄（司会：… など）
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
