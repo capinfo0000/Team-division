@@ -728,3 +728,8 @@ input:focus {
 }
 .roster-text:focus { border-color: var(--primary); outline: none; }
 .roster-saved { font-size: 0.78rem; color: var(--secondary); margin-left: 4px; }
+
+/* ---- 設定内の議題名フィールド ---- */
+.topic-field { margin: 4px 0 14px; }
+.topic-field .topic-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.topic-field input { width: 100%; }

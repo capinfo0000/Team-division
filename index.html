@@ -6,31 +6,22 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=26">
+  <title>座談会</title>
+  <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>🎲 チーム分けアプリ</h1>
-      <p class="subtitle">人数だけで抽選、または名前を入力してチーム単位で発表</p>
+      <h1>🗣️ 座談会</h1>
+      <p class="subtitle">チーム分け・ルーレット発表・共有メモ</p>
     </header>
-
-    <!-- 議題名（チーム作成前に付けられる） -->
-    <div class="topic-row" id="topic-row">
-      <label class="topic-label" for="meeting-title">議題名（任意）</label>
-      <input type="text" id="meeting-title" placeholder="例: 1月度 定例ミーティング" autocomplete="off" maxlength="100">
-    </div>
 
     <!-- タブ -->
     <div class="tabs" id="tabs-bar">
-      <button type="button" class="tab active" data-tab="roulette">🎰 ルーレット抽選</button>
-      <button type="button" class="tab" data-tab="list">📝 名前でチーム発表</button>
-    </div>
-
-    <div class="memo-entry" id="memo-entry">
-      <button type="button" id="open-memo" class="memo-open-btn">📒 チーム番号を入力してメモ帳を開く</button>
-      <button type="button" id="open-report" class="memo-open-btn">📊 集計を見る</button>
+      <button type="button" class="tab active" data-tab="roulette">🎰 抽選</button>
+      <button type="button" class="tab" data-tab="list">📝 名前で発表</button>
+      <button type="button" class="tab" data-tab="memo">📒 メモ帳</button>
+      <button type="button" class="tab" data-tab="report">📊 集計</button>
     </div>
 
     <!-- ===================== ルーレット抽選 ===================== -->
@@ -67,6 +58,11 @@
           <input type="checkbox" id="r-voice" checked>
           自分のチームが出たら音声で読み上げる
         </label>
+
+        <div class="topic-field">
+          <label class="topic-label" for="meeting-title">議題名（任意）</label>
+          <input type="text" id="meeting-title" placeholder="例: 1月度 定例ミーティング" autocomplete="off" maxlength="100">
+        </div>
 
         <button type="button" id="r-start" class="btn btn-big btn-primary">▶ スタート</button>
       </section>
@@ -127,8 +123,33 @@
           <span id="size-unit" class="unit">チーム</span>
         </div>
         <p class="hint">割り切れない場合は、できるだけ均等になるように振り分けます。</p>
+        <div class="topic-field">
+          <label class="topic-label" for="meeting-title-list">議題名（任意）</label>
+          <input type="text" id="meeting-title-list" placeholder="例: 1月度 定例ミーティング" autocomplete="off" maxlength="100">
+        </div>
         <button type="button" id="list-start" class="btn btn-big btn-primary">🎰 ルーレットでスタート</button>
         <p class="hint">「Aチームの発表はこちら」を押すと、リスト内でメンバー名がシャッフル→確定（役割の人が上）。チームごとに発表します。</p>
+      </section>
+    </div>
+
+    <!-- ===================== メモ帳（番号入力） ===================== -->
+    <div id="tab-memo" class="tab-panel" hidden>
+      <section class="card">
+        <h2>📒 メモ帳を開く</h2>
+        <p class="hint">チーム分けで発行された番号を入力してください。</p>
+        <form id="memo-tab-form" class="input-row">
+          <input type="tel" id="memo-tab-input" inputmode="numeric" placeholder="例: 123456" autocomplete="off" maxlength="12">
+          <button type="submit" class="btn btn-primary">開く</button>
+        </form>
+        <p id="memo-tab-error" class="empty-message" hidden>その番号のメモ帳が見つかりませんでした。</p>
+      </section>
+    </div>
+
+    <!-- ===================== 集計 ===================== -->
+    <div id="tab-report" class="tab-panel" hidden>
+      <section class="card">
+        <div id="report-list" class="report-list"></div>
+        <div id="report-detail" class="report-detail" hidden></div>
       </section>
     </div>
 
@@ -165,7 +186,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 26</p>
+    <p class="ver">ver. 27</p>
   </div>
 
   <!-- 保存リスト（ポップアップ） -->
@@ -186,22 +207,6 @@
     </div>
   </div>
 
-  <!-- メモ帳を開く（番号入力ポップアップ） -->
-  <div id="memo-code-modal" class="modal" hidden>
-    <div class="modal-backdrop" id="memo-code-backdrop"></div>
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3>📒 メモ帳を開く</h3>
-        <button type="button" id="memo-code-close" class="modal-close" aria-label="閉じる">×</button>
-      </div>
-      <p class="hint">チーム分けで発行された番号を入力してください。</p>
-      <form id="memo-code-form" class="input-row">
-        <input type="tel" id="memo-code-input" inputmode="numeric" placeholder="例: 123456" autocomplete="off" maxlength="12">
-        <button type="submit" class="btn btn-primary">開く</button>
-      </form>
-      <p id="memo-code-error" class="empty-message" hidden>その番号のメモ帳が見つかりませんでした。</p>
-    </div>
-  </div>
 
   <!-- メモ帳（付箋ボード） -->
   <div id="memo-view" class="memo-view" hidden>
@@ -235,20 +240,6 @@
     <p id="memo-empty" class="empty-message">まだ付箋がありません。上から貼ってみましょう。</p>
   </div>
 
-  <!-- 集計ページ -->
-  <div id="report-view" class="memo-view" hidden>
-    <div class="memo-head">
-      <div class="memo-title"><span class="memo-team">📊 集計</span></div>
-      <div class="memo-actions">
-        <button type="button" id="report-close" class="btn btn-text">閉じる</button>
-      </div>
-    </div>
-    <div class="report-body">
-      <div id="report-list" class="report-list"></div>
-      <div id="report-detail" class="report-detail" hidden></div>
-    </div>
-  </div>
-
-  <script src="app.js?v=26"></script>
+  <script src="app.js?v=27"></script>
 </body>
 </html>

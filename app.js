@@ -81,13 +81,9 @@
   // メモ機能 DOM
   var makeMemoBtn = document.getElementById("r-make-memo");
   var memoHint = document.getElementById("r-memo-hint");
-  var openMemoBtn = document.getElementById("open-memo");
-  var memoCodeModal = document.getElementById("memo-code-modal");
-  var memoCodeBackdrop = document.getElementById("memo-code-backdrop");
-  var memoCodeClose = document.getElementById("memo-code-close");
-  var memoCodeForm = document.getElementById("memo-code-form");
-  var memoCodeInput = document.getElementById("memo-code-input");
-  var memoCodeError = document.getElementById("memo-code-error");
+  var memoTabForm = document.getElementById("memo-tab-form");
+  var memoTabInput = document.getElementById("memo-tab-input");
+  var memoTabError = document.getElementById("memo-tab-error");
   var memoView = document.getElementById("memo-view");
   var memoTeamEl = document.getElementById("memo-team");
   var memoCodeEl = document.getElementById("memo-code");
@@ -103,13 +99,9 @@
   var rosterSaved = document.getElementById("roster-saved");
   var stageCodesEl = document.getElementById("stage-codes");
   var meetingTitleInput = document.getElementById("meeting-title");
-  var topicRowEl = document.getElementById("topic-row");
-  var memoEntryEl = document.getElementById("memo-entry");
-  var openReportBtn = document.getElementById("open-report");
-  var reportView = document.getElementById("report-view");
+  var listTitleInput = document.getElementById("meeting-title-list");
   var reportListEl = document.getElementById("report-list");
   var reportDetail = document.getElementById("report-detail");
-  var reportCloseBtn = document.getElementById("report-close");
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
@@ -447,11 +439,8 @@
     // person モードのみリールに役割を出す（team モードは一覧側に表示）
     reelRoleEl.style.display =
       rMode === "person" && rUseRoles && roles.length > 0 ? "block" : "none";
-    tabsBar.hidden = true;
-    if (topicRowEl) topicRowEl.hidden = true;   // スタート後は議題名を変更不可
-    if (memoEntryEl) memoEntryEl.hidden = true; // ルーレット中は番号入力・集計を隠す
-    document.getElementById("tab-roulette").hidden = true;
-    document.getElementById("tab-list").hidden = true;
+    tabsBar.hidden = true;       // ルーレット中はタブ・設定（議題名）を隠す＝スタート後は変更不可
+    hideAllTabPanels();
     summaryCard.hidden = true;
     stageCard.hidden = false;
     revealStep(0);
@@ -511,8 +500,6 @@
     stageCard.hidden = true;
     summaryCard.hidden = true;
     tabsBar.hidden = false;
-    if (topicRowEl) topicRowEl.hidden = false;
-    if (memoEntryEl) memoEntryEl.hidden = false;
     switchTab(rReturnTab);
   }
 
@@ -722,17 +709,17 @@
     for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
     makeMemoBtn.disabled = true;
     makeMemoBtn.textContent = "作成中…";
-    var title = meetingTitleInput ? meetingTitleInput.value.trim() : "";
+    var title = getMeetingTitle();
     apiPost("create_boards", { title: title, teams: labels, roles: roles })
       .then(function (res) {
-        if (!res || !res.boards) throw new Error("作成に失敗しました");
+        if (!res || !res.boards) throw new Error(res && res.error ? res.error : "作成に失敗しました");
         rBoards = res.boards; // サーバーは送信順で返す＝チーム順
         memoHint.hidden = false;
         makeMemoBtn.hidden = true;
         showSummary();
       })
       .catch(function (e) {
-        window.alert("共有メモの作成に失敗しました。\nこの機能はサーバー版（Xserver）でのみ動作します。\n(" + e.message + ")");
+        window.alert("共有メモの作成に失敗しました。\n(" + e.message + ")");
       })
       .then(function () {
         makeMemoBtn.disabled = false;
@@ -776,7 +763,7 @@
     if (rBoards) return;
     var labels = [];
     for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
-    var title = meetingTitleInput ? meetingTitleInput.value.trim() : "";
+    var title = getMeetingTitle();
     apiPost("create_boards", { title: title, teams: labels, roles: roles }).then(function (res) {
       if (res && res.boards) {
         rBoards = res.boards;
@@ -788,12 +775,24 @@
     }).catch(function () { /* 静的環境では番号なし */ });
   }
 
+  var TAB_IDS = ["tab-roulette", "tab-list", "tab-memo", "tab-report"];
+  function hideAllTabPanels() {
+    TAB_IDS.forEach(function (id) { document.getElementById(id).hidden = true; });
+  }
   function switchTab(name) {
     tabs.forEach(function (t) {
       t.classList.toggle("active", t.getAttribute("data-tab") === name);
     });
     document.getElementById("tab-roulette").hidden = name !== "roulette";
     document.getElementById("tab-list").hidden = name !== "list";
+    document.getElementById("tab-memo").hidden = name !== "memo";
+    document.getElementById("tab-report").hidden = name !== "report";
+    if (name === "report") loadReport();
+  }
+  // 現在のモードに応じた議題名を取得
+  function getMeetingTitle() {
+    var el = (rReturnTab === "list") ? listTitleInput : meetingTitleInput;
+    return el ? el.value.trim() : "";
   }
 
   // ---- メモ帳（共有付箋ボード）----
@@ -832,12 +831,11 @@
   function openBoard(code) {
     apiGet("get_board", "&code=" + encodeURIComponent(code)).then(function (res) {
       if (!res || res.error) {
-        if (!memoCodeModal.hidden) { memoCodeError.hidden = false; }
-        else { window.alert("その番号のメモ帳が見つかりませんでした。"); }
+        memoTabError.hidden = false;
         return;
       }
+      memoTabError.hidden = true;
       memoCode = code;
-      memoCodeModal.hidden = true;
       memoTeamEl.textContent = res.board.team_label;
       memoCodeEl.textContent = "No. " + res.board.code;
       rosterText.value = (res.board.roster != null && res.board.roster !== "")
@@ -940,12 +938,11 @@
     if (memoCode) window.open(API + "?action=export_csv&code=" + encodeURIComponent(memoCode), "_blank");
   }
 
-  // ---- 集計ページ ----
-  function openReport() {
+  // ---- 集計（タブ） ----
+  function loadReport() {
     reportDetail.hidden = true;
     reportDetail.innerHTML = "";
     reportListEl.innerHTML = '<p class="empty-message">読み込み中…</p>';
-    reportView.hidden = false;
     apiGet("list_meetings").then(function (res) {
       if (!res || !res.meetings) {
         reportListEl.innerHTML = '<p class="empty-message">取得できませんでした（メモ機能はサーバー版で利用してください）。</p>';
@@ -1080,7 +1077,6 @@
     reportDetail.appendChild(csv);
     reportDetail.scrollIntoView({ behavior: "smooth", block: "start" });
   }
-  function closeReport() { reportView.hidden = true; }
 
   // ---- イベント ----
   tabs.forEach(function (t) {
@@ -1112,26 +1108,16 @@
 
   // メモ機能
   makeMemoBtn.addEventListener("click", makeMemo);
-  openMemoBtn.addEventListener("click", function () {
-    memoCodeError.hidden = true;
-    memoCodeInput.value = "";
-    memoCodeModal.hidden = false;
-    memoCodeInput.focus();
-  });
-  memoCodeClose.addEventListener("click", function () { memoCodeModal.hidden = true; });
-  memoCodeBackdrop.addEventListener("click", function () { memoCodeModal.hidden = true; });
-  memoCodeForm.addEventListener("submit", function (e) {
+  memoTabForm.addEventListener("submit", function (e) {
     e.preventDefault();
-    var c = memoCodeInput.value.trim();
-    memoCodeError.hidden = true;
+    memoTabError.hidden = true;
+    var c = memoTabInput.value.trim();
     if (c) openBoard(c);
   });
   noteForm.addEventListener("submit", function (e) { e.preventDefault(); addNote(); });
   rosterText.addEventListener("blur", saveRoster);
   memoCsvBtn.addEventListener("click", exportCsv);
   memoCloseBtn.addEventListener("click", closeBoard);
-  openReportBtn.addEventListener("click", openReport);
-  reportCloseBtn.addEventListener("click", closeReport);
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
