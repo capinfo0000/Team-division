@@ -841,7 +841,7 @@
       }
       memoTabError.hidden = true;
       memoCode = code;
-      memoTeamEl.textContent = res.board.team_label;
+      memoTeamEl.textContent = "📒 メモ帳"; // どのチームの付箋か分からないようにチーム名は出さない
       memoCodeEl.textContent = "No. " + res.board.code;
       rosterText.value = (res.board.roster != null && res.board.roster !== "")
         ? res.board.roster : buildRosterTemplate();
