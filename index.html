@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>座談会</title>
-  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="style.css?v=43">
 </head>
 <body>
   <div class="container">
@@ -152,7 +152,7 @@
         <h2>📒 メモ帳を開く</h2>
         <p class="hint">チーム分けで発行された番号を入力してください。</p>
         <form id="memo-tab-form" class="input-row">
-          <input type="tel" id="memo-tab-input" inputmode="numeric" placeholder="例: 123456" autocomplete="off" maxlength="12">
+          <input type="tel" id="memo-tab-input" class="code-input-big" inputmode="numeric" placeholder="例: 123456" autocomplete="off" maxlength="12">
           <button type="submit" class="btn btn-primary">開く</button>
         </form>
         <p id="memo-tab-error" class="empty-message" hidden>その番号のメモ帳が見つかりませんでした。</p>
@@ -200,7 +200,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 42</p>
+    <p class="ver">ver. 43</p>
   </div>
 
 
@@ -226,7 +226,7 @@
     <div class="memo-compose">
       <div class="cat-chips" id="cat-chips"></div>
       <form id="note-form" class="compose-row">
-        <input type="text" id="note-input" placeholder="ここに書いて Enter か「貼る」（落書きでOK）" autocomplete="off" maxlength="200">
+        <textarea id="note-input" rows="3" placeholder="ここに書いて「貼る」（改行OK・文字数制限なし）"></textarea>
         <button type="submit" id="note-add" class="btn btn-primary">貼る</button>
       </form>
     </div>
@@ -286,6 +286,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=42"></script>
+  <script src="app.js?v=43"></script>
 </body>
 </html>

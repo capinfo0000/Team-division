@@ -225,7 +225,7 @@ try {
     if (!in_array($category, CATEGORIES, true)) $category = 'メモ';
     $body = trim((string)($in['body'] ?? ''));
     if ($body === '') jsonOut(['error' => '本文が空です'], 400);
-    $body = mb_substr($body, 0, 1000);
+    $body = mb_substr($body, 0, 5000);
     $ins = $pdo->prepare('INSERT INTO notes (meeting_id, category, body) VALUES (?, ?, ?)');
     $ins->execute([$board['meeting_id'], $category, $body]);
     $id = (int)$pdo->lastInsertId();
