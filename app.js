@@ -298,12 +298,49 @@
     } catch (e) { /* 非対応は無視 */ }
   }
 
+  // 名前から年齢を引く（社員一覧から）。無ければ null
+  function ageOfName(name) {
+    for (var i = 0; i < employees.length; i++) {
+      if (employees[i].name === name) {
+        var a = employees[i].age;
+        return (a === null || a === undefined || a === "") ? null : Number(a);
+      }
+    }
+    return null;
+  }
+
+  // チーム割り当て。年齢が分かる人は、できるだけ同じ年齢が同チームに偏らないよう分散（ベストエフォート）。
+  function assignTeams(count, teamCount) {
+    // 年齢が一つも分からなければ従来どおり完全ランダム
+    var ages = [];
+    var hasAge = false;
+    for (var p = 0; p < count; p++) {
+      var a = (rLabels && rLabels[p] != null) ? ageOfName(rLabels[p]) : null;
+      ages.push(a);
+      if (a !== null) hasAge = true;
+    }
+    if (!hasAge) {
+      var rnd = [];
+      for (var i = 0; i < count; i++) rnd.push(i % teamCount);
+      rnd = shuffle(rnd);
+      return rnd;
+    }
+    // 年齢順に並べて（同年齢はランダム）、チームへ順番に配る＝近い年齢が別チームに散る
+    var withAge = [], noAge = [];
+    for (var q = 0; q < count; q++) (ages[q] !== null ? withAge : noAge).push(q);
+    withAge = shuffle(withAge).sort(function (x, y) { return ages[x] - ages[y]; });
+    noAge = shuffle(noAge);
+    var order = withAge.concat(noAge);
+    var teamOf = new Array(count);
+    var start = Math.floor(Math.random() * teamCount); // 毎回少し変える
+    order.forEach(function (pi, k) { teamOf[pi] = (start + k) % teamCount; });
+    return teamOf;
+  }
+
   // 人数・チーム数・役割から、全員分の割り当てを事前計算する
   function computeAssignments(count, teamCount, useRoles) {
-    var teamOf = [];
-    var i, p, t;
-    for (i = 0; i < count; i++) teamOf.push(i % teamCount); // 均等配分
-    teamOf = shuffle(teamOf);
+    var p, t;
+    var teamOf = assignTeams(count, teamCount);
 
     var membersByTeam = [];
     for (t = 0; t < teamCount; t++) membersByTeam.push([]);
