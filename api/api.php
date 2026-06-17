@@ -111,8 +111,7 @@ try {
               COALESCE(m.title, '') AS title,
               COUNT(DISTINCT b.id) AS team_count,
               MIN(b.created_at) AS created_at,
-              (SELECT COUNT(*) FROM notes n JOIN boards bb ON n.board_id = bb.id
-               WHERE bb.meeting_id = b.meeting_id) AS note_count
+              (SELECT COUNT(*) FROM notes n WHERE n.meeting_id = b.meeting_id) AS note_count
        FROM boards b
        LEFT JOIN meetings m ON m.meeting_id = b.meeting_id
        GROUP BY b.meeting_id, m.title
