@@ -97,6 +97,15 @@
   var empEmpty = document.getElementById("emp-empty");
   var empDatalist = document.getElementById("emp-datalist");
   var employees = [];
+  var groupSelect = document.getElementById("group-select");
+  var groupLoadBtn = document.getElementById("group-load");
+  var groupDeleteBtn = document.getElementById("group-delete");
+  var groupSaveBtn = document.getElementById("group-save");
+  var groups = [];
+  var openHelpBtn = document.getElementById("open-help");
+  var helpModal = document.getElementById("help-modal");
+  var helpClose = document.getElementById("help-close");
+  var helpBackdrop = document.getElementById("help-backdrop");
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
@@ -692,7 +701,7 @@
     document.getElementById("tab-memo").hidden = name !== "memo";
     document.getElementById("tab-report").hidden = name !== "report";
     if (name === "report") loadReport();
-    if (name === "list") loadEmployees(); // 社員一覧を統合したので開くたびに更新
+    if (name === "list") { loadEmployees(); loadGroups(); }
   }
   // 現在のモードに応じた議題名を取得
   function getMeetingTitle() {
@@ -1068,6 +1077,61 @@
     apiPost("delete_employee", { id: emp.id }).then(function () { loadEmployees(); }).catch(function () {});
   }
 
+  // ---- 保存グループ ----
+  function loadGroups() {
+    apiGet("list_groups").then(function (res) {
+      if (res && res.groups) {
+        groups = res.groups;
+        renderGroupSelect();
+      }
+    }).catch(function () {});
+  }
+  function renderGroupSelect() {
+    if (!groupSelect) return;
+    var cur = groupSelect.value;
+    groupSelect.innerHTML = "";
+    var ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = groups.length ? "保存グループを選択…" : "保存グループはありません";
+    groupSelect.appendChild(ph);
+    groups.forEach(function (g) {
+      var opt = document.createElement("option");
+      opt.value = String(g.id);
+      opt.textContent = g.name + "（" + g.members.length + "人）";
+      groupSelect.appendChild(opt);
+    });
+    groupSelect.value = cur;
+  }
+  function saveGroup() {
+    if (members.length === 0) { window.alert("保存するメンバーがいません。"); return; }
+    var name = window.prompt("グループ名を入力してください（例: 営業部）", "");
+    if (name === null) return;
+    name = name.trim();
+    if (!name) return;
+    apiPost("save_group", { name: name, members: members }).then(function (res) {
+      if (res && res.group) loadGroups();
+      else window.alert("保存に失敗しました" + (res && res.error ? "：" + res.error : "（サーバー版で利用してください）"));
+    }).catch(function () { window.alert("保存に失敗しました（接続不可）"); });
+  }
+  function loadGroup() {
+    var id = groupSelect.value;
+    if (!id) return;
+    var g = groups.filter(function (x) { return String(x.id) === id; })[0];
+    if (!g) return;
+    if (members.length > 0 && !window.confirm("現在のメンバーを「" + g.name + "」で置き換えますか？")) return;
+    members = g.members.slice();
+    saveMembers();
+    renderMembers();
+  }
+  function deleteGroupSel() {
+    var id = groupSelect.value;
+    if (!id) return;
+    var g = groups.filter(function (x) { return String(x.id) === id; })[0];
+    if (!g) return;
+    if (!window.confirm("グループ「" + g.name + "」を削除しますか？")) return;
+    apiPost("delete_group", { id: g.id }).then(function () { loadGroups(); }).catch(function () {});
+  }
+
   // ---- イベント ----
   tabs.forEach(function (t) {
     t.addEventListener("click", function () {
@@ -1105,6 +1169,12 @@
     if (c) openBoard(c);
   });
   empForm.addEventListener("submit", function (e) { e.preventDefault(); addEmployeeFromForm(); });
+  groupSaveBtn.addEventListener("click", saveGroup);
+  groupLoadBtn.addEventListener("click", loadGroup);
+  groupDeleteBtn.addEventListener("click", deleteGroupSel);
+  openHelpBtn.addEventListener("click", function () { helpModal.hidden = false; });
+  helpClose.addEventListener("click", function () { helpModal.hidden = true; });
+  helpBackdrop.addEventListener("click", function () { helpModal.hidden = true; });
   noteForm.addEventListener("submit", function (e) { e.preventDefault(); addNote(); });
   rosterText.addEventListener("blur", saveRoster);
   memoCsvBtn.addEventListener("click", exportCsv);
@@ -1138,6 +1208,7 @@
   updateUnit();
   buildCatChips();
   loadEmployees(); // メンバー登録の検索プルダウン用に社員一覧を読み込む（サーバー版のみ）
+  loadGroups();
   // 共有リンク（#memo=番号）で直接メモ帳を開く
   (function () {
     var m = String(location.hash || "").match(/memo=([0-9]+)/);

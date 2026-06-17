@@ -745,3 +745,36 @@ input:focus {
 .emp-list .emp-name { font-weight: 600; flex: 1; min-width: 0; }
 .emp-list .emp-age { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
 .emp-list .btn { padding: 6px 12px; font-size: 0.85rem; }
+
+/* ---- 使い方ボタン / グループ ---- */
+.help-btn {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--primary);
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.help-btn:hover { background: #eef1fe; }
+.help-body h4 { margin: 16px 0 4px; font-size: 1rem; }
+.help-body p { margin: 0 0 8px; font-size: 0.9rem; line-height: 1.7; }
+
+.group-block {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.group-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.group-select {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+}
+.group-row .btn { padding: 8px 12px; font-size: 0.85rem; }

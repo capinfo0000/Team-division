@@ -104,6 +104,49 @@ try {
     jsonOut(['ok' => true]);
   }
 
+  if ($action === 'list_groups') {
+    $rows = $pdo->query('SELECT id, name, members FROM member_groups ORDER BY name ASC')->fetchAll();
+    $groups = array_map(function ($g) {
+      $members = array_values(array_filter(array_map('trim', explode("\n", (string)$g['members'])), function ($s) { return $s !== ''; }));
+      return ['id' => (int)$g['id'], 'name' => $g['name'], 'members' => $members];
+    }, $rows);
+    jsonOut(['groups' => $groups]);
+  }
+
+  if ($action === 'save_group') {
+    // body: { name, members: [...] }
+    $in = readJson();
+    $name = mb_substr(trim((string)($in['name'] ?? '')), 0, 50);
+    if ($name === '') jsonOut(['error' => 'グループ名が必要です'], 400);
+    $members = $in['members'] ?? [];
+    if (!is_array($members) || count($members) === 0) jsonOut(['error' => 'メンバーがいません'], 400);
+    $clean = [];
+    foreach ($members as $m) {
+      $m = mb_substr(trim((string)$m), 0, 30);
+      if ($m !== '') $clean[] = $m;
+    }
+    $text = implode("\n", $clean);
+    // 同名は上書き
+    $ex = $pdo->prepare('SELECT id FROM member_groups WHERE name = ?');
+    $ex->execute([$name]);
+    $row = $ex->fetch();
+    if ($row) {
+      $pdo->prepare('UPDATE member_groups SET members = ? WHERE id = ?')->execute([$text, $row['id']]);
+      $id = (int)$row['id'];
+    } else {
+      $pdo->prepare('INSERT INTO member_groups (name, members) VALUES (?, ?)')->execute([$name, $text]);
+      $id = (int)$pdo->lastInsertId();
+    }
+    jsonOut(['group' => ['id' => $id, 'name' => $name, 'members' => $clean]]);
+  }
+
+  if ($action === 'delete_group') {
+    $in = readJson();
+    $id = (int)($in['id'] ?? 0);
+    $pdo->prepare('DELETE FROM member_groups WHERE id = ?')->execute([$id]);
+    jsonOut(['ok' => true]);
+  }
+
   if ($action === 'list_meetings') {
     // ミーティング（議題）単位の一覧。古いデータ（meetings行なし）も拾う。
     $sql =

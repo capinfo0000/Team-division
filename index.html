@@ -7,13 +7,14 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>座談会</title>
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
 </head>
 <body>
   <div class="container">
     <header>
       <h1>🗣️ 座談会</h1>
       <p class="subtitle">チーム分け・ルーレット発表・共有メモ</p>
+      <button type="button" id="open-help" class="help-btn">❔ 使い方</button>
     </header>
 
     <!-- タブ -->
@@ -87,6 +88,16 @@
         </div>
         <ul id="member-list" class="member-list"></ul>
         <p id="empty-message" class="empty-message">まだメンバーがいません。上から追加してください。</p>
+
+        <!-- グループ（選択中メンバーの保存・呼び出し） -->
+        <div class="group-block">
+          <div class="group-row">
+            <select id="group-select" class="group-select"><option value="">保存グループを選択…</option></select>
+            <button type="button" id="group-load" class="btn btn-secondary">呼び出す</button>
+            <button type="button" id="group-delete" class="btn btn-text">削除</button>
+          </div>
+          <button type="button" id="group-save" class="btn btn-primary">💾 現在のメンバーをグループ保存</button>
+        </div>
       </section>
 
       <!-- 役割設定 -->
@@ -137,7 +148,7 @@
         <form id="emp-form" class="input-row">
           <input type="text" id="emp-name" placeholder="名前" autocomplete="off" maxlength="50">
           <input type="number" id="emp-age" class="emp-age-input" placeholder="年齢" min="0" max="150">
-          <button type="submit" class="btn btn-primary">追加</button>
+          <button type="submit" class="btn btn-primary">＋ 新規追加</button>
         </form>
         <p class="hint">ここで登録した社員は、上のメンバー登録の検索プルダウンに出ます。</p>
         <ul id="emp-list" class="emp-list"></ul>
@@ -199,7 +210,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 37</p>
+    <p class="ver">ver. 38</p>
   </div>
 
 
@@ -234,6 +245,38 @@
     <p id="memo-empty" class="empty-message">まだ付箋がありません。上から貼ってみましょう。</p>
   </div>
 
-  <script src="app.js?v=37"></script>
+  <!-- 使い方ポップアップ -->
+  <div id="help-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="help-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>❔ 使い方</h3>
+        <button type="button" id="help-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="help-body">
+        <h4>🎰 抽選</h4>
+        <p>人数とチーム数だけ決めて「スタート」。1人ずつ「自分のチームを見る」を押すと、その人のチーム（と役割）がルーレットで表示されます。前の人の結果は伏せられ、希望すれば音声でも読み上げます。</p>
+
+        <h4>🎲 一括抽選</h4>
+        <p>名前を登録してチーム分けします。
+          <br>・<b>メンバー登録</b>：名前を入力（社員一覧から検索候補が出ます）して「追加」。
+          <br>・<b>社員一覧</b>：よく使う人を「＋新規追加」で登録（年齢も任意）。各行の「＋メンバー」で素早く追加、編集・削除も可能。
+          <br>・<b>グループ保存</b>：今選んでいるメンバーを「💾グループ保存」で名前を付けて保存。次回は選んで「呼び出す」。
+          <br>・<b>役割</b>：書記・司会などを設定するとチーム内にランダム割り当て（人数が足りなければ兼任）。
+          <br>・<b>チーム分け設定</b>：チーム数 or 1チームの人数を指定し、議題名を入れて「ルーレットでスタート」。チームごとに発表します。</p>
+
+        <h4>📒 メモ帳</h4>
+        <p>チーム分け後に発行される「チーム番号」を入力すると、その議題の共有メモ（付箋ボード）が開きます。カテゴリ（議題/良い点/課題/アイデア/質問/メモ）を選んで一言ずつ貼るだけ。別端末からも同じ番号で参加でき、内容は自動で同期されます。メンバー記入欄に司会・発表などの担当も書けます。</p>
+
+        <h4>📊 集計</h4>
+        <p>議題ごとに付箋の件数をカテゴリ別に表示します。CSV出力して別システムでの要約に使えます。※プライバシーのため、付箋は「どのチームか」を保存しません。</p>
+
+        <h4>👥 補足</h4>
+        <p>チーム番号は議題（1回のチーム分け）ごとに分かれ、過去の回と混ざりません。番号やリンク（末尾 #memo=番号）を共有すれば参加者がすぐ開けます。</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=38"></script>
 </body>
 </html>

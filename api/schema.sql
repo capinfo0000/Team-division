@@ -9,6 +9,14 @@ CREATE TABLE IF NOT EXISTS employees (
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 保存グループ（選択中メンバーの組み合わせ）
+CREATE TABLE IF NOT EXISTS member_groups (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  name        VARCHAR(50)  NOT NULL,
+  members     TEXT         NOT NULL,   -- 改行区切りの名前
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS meetings (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   meeting_id  VARCHAR(40)  NOT NULL UNIQUE,      -- 1回のチーム分け＝1ミーティング
