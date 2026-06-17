@@ -787,7 +787,7 @@
     }).catch(function () { /* 静的環境では番号なし */ });
   }
 
-  var TAB_IDS = ["tab-roulette", "tab-list", "tab-memo", "tab-report", "tab-employees"];
+  var TAB_IDS = ["tab-roulette", "tab-list", "tab-memo", "tab-report"];
   function hideAllTabPanels() {
     TAB_IDS.forEach(function (id) { document.getElementById(id).hidden = true; });
   }
@@ -799,9 +799,8 @@
     document.getElementById("tab-list").hidden = name !== "list";
     document.getElementById("tab-memo").hidden = name !== "memo";
     document.getElementById("tab-report").hidden = name !== "report";
-    document.getElementById("tab-employees").hidden = name !== "employees";
     if (name === "report") loadReport();
-    if (name === "employees") loadEmployees();
+    if (name === "list") loadEmployees(); // 社員一覧を統合したので開くたびに更新
   }
   // 現在のモードに応じた議題名を取得
   function getMeetingTitle() {
