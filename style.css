@@ -778,3 +778,7 @@ input:focus {
   background: #fff;
 }
 .group-row .btn { padding: 8px 12px; font-size: 0.85rem; }
+
+/* ---- 社員追加/グループ保存の2ボタン ---- */
+.dual-actions { display: flex; gap: 8px; }
+.dual-actions .btn { flex: 1; padding: 12px; font-weight: 600; }

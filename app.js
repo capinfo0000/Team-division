@@ -102,6 +102,10 @@
   var groupDeleteBtn = document.getElementById("group-delete");
   var groupSaveBtn = document.getElementById("group-save");
   var groups = [];
+  var openEmpBtn = document.getElementById("open-emp");
+  var empModal = document.getElementById("emp-modal");
+  var empClose = document.getElementById("emp-close");
+  var empBackdrop = document.getElementById("emp-backdrop");
   var openHelpBtn = document.getElementById("open-help");
   var helpModal = document.getElementById("help-modal");
   var helpClose = document.getElementById("help-close");
@@ -1172,6 +1176,9 @@
   groupSaveBtn.addEventListener("click", saveGroup);
   groupLoadBtn.addEventListener("click", loadGroup);
   groupDeleteBtn.addEventListener("click", deleteGroupSel);
+  openEmpBtn.addEventListener("click", function () { empModal.hidden = false; loadEmployees(); });
+  empClose.addEventListener("click", function () { empModal.hidden = true; });
+  empBackdrop.addEventListener("click", function () { empModal.hidden = true; });
   openHelpBtn.addEventListener("click", function () { helpModal.hidden = false; });
   helpClose.addEventListener("click", function () { helpModal.hidden = true; });
   helpBackdrop.addEventListener("click", function () { helpModal.hidden = true; });

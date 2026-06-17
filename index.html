@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>座談会</title>
-  <link rel="stylesheet" href="style.css?v=38">
+  <link rel="stylesheet" href="style.css?v=39">
 </head>
 <body>
   <div class="container">
@@ -96,7 +96,10 @@
             <button type="button" id="group-load" class="btn btn-secondary">呼び出す</button>
             <button type="button" id="group-delete" class="btn btn-text">削除</button>
           </div>
-          <button type="button" id="group-save" class="btn btn-primary">💾 現在のメンバーをグループ保存</button>
+          <div class="dual-actions">
+            <button type="button" id="open-emp" class="btn btn-secondary">👥 社員追加</button>
+            <button type="button" id="group-save" class="btn btn-primary">💾 グループ保存</button>
+          </div>
         </div>
       </section>
 
@@ -140,19 +143,6 @@
         </div>
         <button type="button" id="list-start" class="btn btn-big btn-primary">🎰 ルーレットでスタート</button>
         <p class="hint">「Aチームの発表はこちら」を押すと、リスト内でメンバー名がシャッフル→確定（役割の人が上）。チームごとに発表します。</p>
-      </section>
-
-      <!-- 社員一覧（メンバー候補の管理） -->
-      <section class="card">
-        <h2>👥 社員一覧（メンバー候補）</h2>
-        <form id="emp-form" class="input-row">
-          <input type="text" id="emp-name" placeholder="名前" autocomplete="off" maxlength="50">
-          <input type="number" id="emp-age" class="emp-age-input" placeholder="年齢" min="0" max="150">
-          <button type="submit" class="btn btn-primary">＋ 新規追加</button>
-        </form>
-        <p class="hint">ここで登録した社員は、上のメンバー登録の検索プルダウンに出ます。</p>
-        <ul id="emp-list" class="emp-list"></ul>
-        <p id="emp-empty" class="empty-message">社員が登録されていません。</p>
       </section>
     </div>
 
@@ -210,7 +200,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 38</p>
+    <p class="ver">ver. 39</p>
   </div>
 
 
@@ -245,6 +235,25 @@
     <p id="memo-empty" class="empty-message">まだ付箋がありません。上から貼ってみましょう。</p>
   </div>
 
+  <!-- 社員追加ポップアップ -->
+  <div id="emp-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="emp-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>👥 社員一覧</h3>
+        <button type="button" id="emp-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <form id="emp-form" class="input-row">
+        <input type="text" id="emp-name" placeholder="名前" autocomplete="off" maxlength="50">
+        <input type="number" id="emp-age" class="emp-age-input" placeholder="年齢" min="0" max="150">
+        <button type="submit" class="btn btn-primary">＋ 新規追加</button>
+      </form>
+      <p class="hint">登録した社員は、メンバー登録の検索プルダウンに出ます。各行の「＋メンバー」で選択に追加できます。</p>
+      <ul id="emp-list" class="emp-list"></ul>
+      <p id="emp-empty" class="empty-message">社員が登録されていません。</p>
+    </div>
+  </div>
+
   <!-- 使い方ポップアップ -->
   <div id="help-modal" class="modal" hidden>
     <div class="modal-backdrop" id="help-backdrop"></div>
@@ -277,6 +286,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=38"></script>
+  <script src="app.js?v=39"></script>
 </body>
 </html>
