@@ -181,6 +181,10 @@ try {
     $total = $pdo->prepare('SELECT COUNT(*) FROM notes WHERE meeting_id = ?');
     $total->execute([$meeting]);
 
+    // 意見（付箋本文）もカテゴリ順に返す（同じ議題の全チーム分を合算）
+    $ns = $pdo->prepare('SELECT category, body, created_at FROM notes WHERE meeting_id = ? ORDER BY category ASC, id ASC');
+    $ns->execute([$meeting]);
+
     jsonOut([
       'meeting_id'   => $meeting,
       'title'        => $meta['title'],
@@ -188,6 +192,7 @@ try {
       'created_at'   => $meta['created_at'],
       'total_notes'  => (int)$total->fetchColumn(),
       'by_category'  => $byCat->fetchAll(),
+      'notes'        => $ns->fetchAll(),
     ]);
   }
 

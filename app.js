@@ -1012,6 +1012,29 @@
       });
     }
 
+    // カテゴリ別の意見（本文）一覧 ＝ 同じ議題の全チーム分を合算
+    if (a.notes && a.notes.length) {
+      var oh = document.createElement("h4");
+      oh.textContent = "意見一覧（全チーム合算）";
+      reportDetail.appendChild(oh);
+      CATS.forEach(function (c) {
+        var items = a.notes.filter(function (n) { return n.category === c.key; });
+        if (!items.length) return;
+        var head = document.createElement("div");
+        head.className = "op-head";
+        head.textContent = c.key + "（" + items.length + "）";
+        head.style.color = c.color;
+        reportDetail.appendChild(head);
+        items.forEach(function (n) {
+          var item = document.createElement("div");
+          item.className = "op-item";
+          item.style.borderLeftColor = c.color;
+          item.textContent = n.body;
+          reportDetail.appendChild(item);
+        });
+      });
+    }
+
     var csv = document.createElement("button");
     csv.className = "btn btn-secondary";
     csv.textContent = "このミーティングのCSVを出力";

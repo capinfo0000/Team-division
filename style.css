@@ -807,3 +807,18 @@ input:focus {
 }
 #note-input:focus { border-color: var(--primary); }
 #note-add { flex: 1 1 100%; }
+
+/* ---- 集計の意見一覧 ---- */
+.op-head { font-weight: 700; font-size: 0.9rem; margin: 14px 0 6px; }
+.op-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
