@@ -822,3 +822,32 @@ input:focus {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ---- 付箋の編集ボタン ---- */
+.sticky .sticky-edit {
+  position: absolute;
+  top: 6px;
+  right: 32px;
+  border: none;
+  background: rgba(0,0,0,0.10);
+  color: #333;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 0.8rem;
+}
+.sticky .sticky-edit:hover { background: var(--primary); color: #fff; }
+
+/* ---- ミーティング一覧の各チーム番号 ---- */
+.ri-codes {
+  margin: -2px 0 14px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+}
+.ri-codes .code-row { padding: 5px 0; border-top: 1px dashed var(--border); }
+.ri-codes .code-row:first-child { border-top: none; }

@@ -7,16 +7,12 @@
 
   // メモ機能（共有付箋ボード）
   var API = "api/api.php"; // Xserver上の同じ場所のapiフォルダを想定
-  var CATS = [
-    { key: "議題", color: "#3b82f6" },
-    { key: "良い点", color: "#10b981" },
-    { key: "課題", color: "#ef4444" },
-    { key: "アイデア", color: "#f59e0b" },
-    { key: "質問", color: "#8b5cf6" },
-    { key: "メモ", color: "#6b7280" }
-  ];
+  var CATS_KEY = "team-division-cats";
+  var DEFAULT_CATS = ["意見", "質問", "アイデア", "感想", "その他"]; // 中立なラベル
+  var cats = loadCats();                 // 設定用（議題作成時に送る・議題ごとに編集可）
+  var mCats = DEFAULT_CATS.slice();      // 今開いているボードのラベル
   var memoCode = null;
-  var memoCat = CATS[0].key;
+  var memoCat = mCats[0];
   var memoTimer = null;
 
   // ---- 状態 ----
@@ -88,6 +84,7 @@
   var stageCodesEl = document.getElementById("stage-codes");
   var meetingTitleInput = document.getElementById("meeting-title");
   var listTitleInput = document.getElementById("meeting-title-list");
+  var catsInput = document.getElementById("cats-input");
   var reportListEl = document.getElementById("report-list");
   var reportDetail = document.getElementById("report-detail");
   var empForm = document.getElementById("emp-form");
@@ -159,6 +156,24 @@
     } catch (e) {
       /* 保存失敗は無視 */
     }
+  }
+
+  function loadCats() {
+    try {
+      var raw = localStorage.getItem(CATS_KEY);
+      if (raw === null) return DEFAULT_CATS.slice();
+      var arr = JSON.parse(raw);
+      return (Array.isArray(arr) && arr.length) ? arr : DEFAULT_CATS.slice();
+    } catch (e) {
+      return DEFAULT_CATS.slice();
+    }
+  }
+  function saveCats() {
+    try { localStorage.setItem(CATS_KEY, JSON.stringify(cats)); } catch (e) {}
+  }
+  function parseCats(text) {
+    return text.split(/[\n,、，]+/).map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
   }
 
   // ---- メンバー操作 ----
@@ -664,7 +679,7 @@
     makeMemoBtn.disabled = true;
     makeMemoBtn.textContent = "作成中…";
     var title = getMeetingTitle();
-    apiPost("create_boards", { title: title, teams: labels, roles: roles })
+    apiPost("create_boards", { title: title, teams: labels, roles: roles, categories: cats })
       .then(function (res) {
         if (!res || !res.boards) throw new Error(res && res.error ? res.error : "作成に失敗しました");
         rBoards = res.boards; // サーバーは送信順で返す＝チーム順
@@ -718,7 +733,7 @@
     var labels = [];
     for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
     var title = getMeetingTitle();
-    apiPost("create_boards", { title: title, teams: labels, roles: roles }).then(function (res) {
+    apiPost("create_boards", { title: title, teams: labels, roles: roles, categories: cats }).then(function (res) {
       if (res && res.boards) {
         rBoards = res.boards;
         renderTeamCodes(stageCodesEl);
@@ -761,25 +776,23 @@
       body: JSON.stringify(body)
     }).then(function (r) { return r.json(); });
   }
-  function catColor(key) {
-    for (var i = 0; i < CATS.length; i++) if (CATS[i].key === key) return CATS[i].color;
-    return "#6b7280";
+  // ラベル名から色を生成（固定表ではなく文字列ハッシュ＝任意のラベルに対応）
+  function catHue(key) {
+    var h = 0;
+    for (var i = 0; i < String(key).length; i++) h = (h * 31 + String(key).charCodeAt(i)) % 360;
+    return h;
   }
-  function catTint(hex) {
-    var r = parseInt(hex.substr(1, 2), 16);
-    var g = parseInt(hex.substr(3, 2), 16);
-    var b = parseInt(hex.substr(5, 2), 16);
-    return "rgba(" + r + "," + g + "," + b + ",0.16)";
-  }
+  function catColor(key) { return "hsl(" + catHue(key) + ", 55%, 42%)"; }
+  function catTint(key) { return "hsla(" + catHue(key) + ", 55%, 45%, 0.16)"; }
   function buildCatChips() {
     catChipsEl.innerHTML = "";
-    CATS.forEach(function (c) {
+    mCats.forEach(function (key) {
       var b = document.createElement("button");
       b.type = "button";
-      b.className = "cat-chip" + (c.key === memoCat ? " active" : "");
-      b.textContent = c.key;
-      b.style.background = c.color;
-      b.addEventListener("click", function () { memoCat = c.key; buildCatChips(); noteInput.focus(); });
+      b.className = "cat-chip" + (key === memoCat ? " active" : "");
+      b.textContent = key;
+      b.style.background = catColor(key);
+      b.addEventListener("click", function () { memoCat = key; buildCatChips(); noteInput.focus(); });
       catChipsEl.appendChild(b);
     });
   }
@@ -795,7 +808,8 @@
       memoCodeEl.textContent = "No. " + res.board.code;
       rosterText.value = (res.board.roster != null && res.board.roster !== "")
         ? res.board.roster : buildRosterTemplate();
-      memoCat = CATS[0].key;
+      mCats = (res.categories && res.categories.length) ? res.categories : DEFAULT_CATS.slice();
+      memoCat = mCats[0];
       buildCatChips();
       renderNotes(res.notes);
       memoView.hidden = false;
@@ -838,14 +852,22 @@
       var color = catColor(n.category);
       var card = document.createElement("div");
       card.className = "sticky";
-      card.style.background = catTint(color);
+      card.style.background = catTint(n.category);
       card.style.borderLeftColor = color;
 
+      var edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "sticky-edit";
+      edit.textContent = "✎";
+      edit.title = "編集";
       var del = document.createElement("button");
       del.type = "button";
       del.className = "sticky-del";
       del.textContent = "×";
-      (function (id) { del.addEventListener("click", function () { deleteNote(id); }); })(n.id);
+      (function (note) {
+        edit.addEventListener("click", function () { editNote(note); });
+        del.addEventListener("click", function () { deleteNote(note.id); });
+      })(n);
 
       var cat = document.createElement("span");
       cat.className = "sticky-cat";
@@ -858,15 +880,25 @@
 
       var meta = document.createElement("div");
       meta.className = "sticky-meta";
-      var when = n.created_at ? String(n.created_at).substring(5, 16) : "";
-      meta.textContent = (n.author ? n.author + " · " : "") + when;
+      meta.textContent = n.created_at ? String(n.created_at).substring(5, 16) : "";
 
+      card.appendChild(edit);
       card.appendChild(del);
       card.appendChild(cat);
       card.appendChild(body);
       card.appendChild(meta);
       memoBoardEl.appendChild(card);
     });
+  }
+  function editNote(note) {
+    var body = window.prompt("付箋の内容を編集", note.body);
+    if (body === null) return;
+    body = body.trim();
+    if (body === "") return;
+    apiPost("update_note", { code: memoCode, id: note.id, body: body }).then(function (res) {
+      if (res && res.ok) refreshBoard();
+      else window.alert("更新に失敗しました" + (res && res.error ? "：" + res.error : ""));
+    }).catch(function () { window.alert("更新に失敗しました（接続不可）"); });
   }
   function addNote() {
     var text = noteInput.value.trim();
@@ -955,6 +987,32 @@
       item.appendChild(info);
       item.appendChild(btns);
       reportListEl.appendChild(item);
+
+      // 各チームの番号（再確認）＋ボードを開いて確認・修正
+      if (m.boards && m.boards.length) {
+        var codes = document.createElement("div");
+        codes.className = "ri-codes";
+        m.boards.forEach(function (b) {
+          var row = document.createElement("div");
+          row.className = "code-row";
+          var nm = document.createElement("span");
+          nm.className = "code-team";
+          nm.textContent = b.team_label;
+          var num = document.createElement("span");
+          num.className = "code-num";
+          num.textContent = "No. " + b.code;
+          var open = document.createElement("button");
+          open.type = "button";
+          open.className = "btn btn-secondary";
+          open.textContent = "開く";
+          (function (code) { open.addEventListener("click", function () { openBoard(code); }); })(b.code);
+          row.appendChild(nm);
+          row.appendChild(num);
+          row.appendChild(open);
+          codes.appendChild(row);
+        });
+        reportListEl.appendChild(codes);
+      }
     });
   }
   function openAggregate(meetingId) {
@@ -1017,18 +1075,21 @@
       var oh = document.createElement("h4");
       oh.textContent = "意見一覧（全チーム合算）";
       reportDetail.appendChild(oh);
-      CATS.forEach(function (c) {
-        var items = a.notes.filter(function (n) { return n.category === c.key; });
+      // 出現するカテゴリを件数順に（by_category）。漏れがあれば末尾に。
+      var catOrder = a.by_category.map(function (c) { return c.category; });
+      a.notes.forEach(function (n) { if (catOrder.indexOf(n.category) < 0) catOrder.push(n.category); });
+      catOrder.forEach(function (key) {
+        var items = a.notes.filter(function (n) { return n.category === key; });
         if (!items.length) return;
         var head = document.createElement("div");
         head.className = "op-head";
-        head.textContent = c.key + "（" + items.length + "）";
-        head.style.color = c.color;
+        head.textContent = key + "（" + items.length + "）";
+        head.style.color = catColor(key);
         reportDetail.appendChild(head);
         items.forEach(function (n) {
           var item = document.createElement("div");
           item.className = "op-item";
-          item.style.borderLeftColor = c.color;
+          item.style.borderLeftColor = catColor(key);
           item.textContent = n.body;
           reportDetail.appendChild(item);
         });
@@ -1236,6 +1297,12 @@
   groupSaveBtn.addEventListener("click", saveGroup);
   groupLoadBtn.addEventListener("click", loadGroup);
   groupDeleteBtn.addEventListener("click", deleteGroupSel);
+  catsInput.addEventListener("change", function () {
+    var parsed = parseCats(catsInput.value);
+    cats = parsed.length ? parsed : DEFAULT_CATS.slice();
+    saveCats();
+    catsInput.value = cats.join("、");
+  });
   openEmpBtn.addEventListener("click", function () { empModal.hidden = false; loadEmployees(); });
   empClose.addEventListener("click", function () { empModal.hidden = true; });
   empBackdrop.addEventListener("click", function () { empModal.hidden = true; });
@@ -1273,6 +1340,7 @@
   renderMembers();
   renderRoles();
   updateUnit();
+  if (catsInput) catsInput.value = cats.join("、");
   buildCatChips();
   loadEmployees(); // メンバー登録の検索プルダウン用に社員一覧を読み込む（サーバー版のみ）
   loadGroups();

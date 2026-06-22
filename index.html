@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>座談会</title>
-  <link rel="stylesheet" href="style.css?v=45">
+  <link rel="stylesheet" href="style.css?v=46">
 </head>
 <body>
   <div class="container">
@@ -141,6 +141,10 @@
           <label class="topic-label" for="meeting-title-list">議題名（任意）</label>
           <input type="text" id="meeting-title-list" placeholder="2026年8月：今後の座談会について" autocomplete="off" maxlength="100">
         </div>
+        <div class="topic-field">
+          <label class="topic-label" for="cats-input">メモのラベル（カンマ区切り・議題に合わせて変更可）</label>
+          <input type="text" id="cats-input" placeholder="意見, 質問, アイデア, 感想, その他" autocomplete="off" maxlength="120">
+        </div>
         <button type="button" id="list-start" class="btn btn-big btn-primary">🎰 ルーレットでスタート</button>
         <p class="hint">「Aチームの発表はこちら」を押すと、リスト内でメンバー名がシャッフル→確定（役割の人が上）。チームごとに発表します。</p>
       </section>
@@ -200,7 +204,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 45</p>
+    <p class="ver">ver. 46</p>
   </div>
 
 
@@ -286,6 +290,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=45"></script>
+  <script src="app.js?v=46"></script>
 </body>
 </html>

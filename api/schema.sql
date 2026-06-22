@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS meetings (
   meeting_id  VARCHAR(40)  NOT NULL UNIQUE,      -- 1回のチーム分け＝1ミーティング
   title       VARCHAR(100) NOT NULL DEFAULT '',  -- 議題名
   team_count  INT          NOT NULL DEFAULT 0,
+  categories  TEXT         NULL,                 -- メモのラベル（改行区切り・議題ごと）
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

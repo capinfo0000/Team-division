@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS member_groups (
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 議題ごとのラベル列を追加（既存meetingsに無ければ追加）
+ALTER TABLE meetings ADD COLUMN categories TEXT NULL;
+
 -- 付箋をチーム非紐付け（議題単位）に作り直す（既存の付箋データは消えます／テスト段階なら問題なし）
 DROP TABLE IF EXISTS notes;
 CREATE TABLE notes (
