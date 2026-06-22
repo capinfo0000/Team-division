@@ -11,8 +11,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') { exit; }
 const CATEGORIES = ['議題', '良い点', '課題', 'アイデア', '質問', 'メモ'];
 
 function readJson(): array {
+  static $cached = null;
+  if ($cached !== null) return $cached;
   $d = json_decode(file_get_contents('php://input'), true);
-  return is_array($d) ? $d : [];
+  $cached = is_array($d) ? $d : [];
+  return $cached;
+}
+function appPassword(): string {
+  $cfg = require __DIR__ . '/config.php';
+  return (string)($cfg['app_password'] ?? '');
+}
+function authOk(): bool {
+  $need = appPassword();
+  if ($need === '') return true; // パスワード未設定なら制限なし（従来どおり）
+  $pw = $_GET['pw'] ?? (readJson()['pw'] ?? '');
+  return is_string($pw) && hash_equals($need, $pw);
 }
 function jsonOut($data, int $status = 200): void {
   http_response_code($status);
@@ -40,6 +53,19 @@ $action = $_GET['action'] ?? '';
 
 try {
   $pdo = db();
+
+  // ログイン関連（管理者パスワード）
+  if ($action === 'auth_status') { jsonOut(['required' => appPassword() !== '']); }
+  if ($action === 'auth') { jsonOut(['ok' => authOk()]); }
+
+  // 管理者のみの操作はパスワードで保護（メモ帳系＝参加者の入力は保護しない）
+  $PROTECTED = ['create_boards', 'list_meetings', 'aggregate', 'export_csv',
+                'list_employees', 'save_employee', 'delete_employee',
+                'list_groups', 'save_group', 'delete_group'];
+  if (in_array($action, $PROTECTED, true) && !authOk()) {
+    if ($action === 'export_csv') { http_response_code(401); echo 'login required'; exit; }
+    jsonOut(['error' => 'ログインが必要です', 'need_login' => true], 401);
+  }
 
   if ($action === 'create_boards') {
     // body: { title?: "議題名", teams: ["Aチーム", ...] }

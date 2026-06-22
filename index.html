@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>座談会</title>
-  <link rel="stylesheet" href="style.css?v=46">
+  <link rel="stylesheet" href="style.css?v=47">
 </head>
 <body>
   <div class="container">
@@ -204,7 +204,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 46</p>
+    <p class="ver">ver. 47</p>
   </div>
 
 
@@ -290,6 +290,30 @@
     </div>
   </div>
 
-  <script src="app.js?v=46"></script>
+  <!-- ログインゲート（参加者はメモ帳のみ・管理者はパスワード） -->
+  <div id="auth-gate" class="auth-gate" hidden>
+    <div class="auth-card">
+      <h2>🗣️ 座談会</h2>
+      <div class="auth-sec">
+        <h3>📒 参加者の方</h3>
+        <p class="hint">配られたチーム番号でメモ帳を開けます（ログイン不要）。</p>
+        <form id="gate-memo-form" class="input-row">
+          <input type="tel" id="gate-memo-input" class="code-input-big" inputmode="numeric" placeholder="例: 123456" autocomplete="off" maxlength="12">
+          <button type="submit" class="btn btn-primary">メモ帳を開く</button>
+        </form>
+        <p id="gate-memo-error" class="empty-message" hidden>その番号のメモ帳が見つかりませんでした。</p>
+      </div>
+      <div class="auth-sec">
+        <h3>🔑 管理者の方</h3>
+        <form id="gate-login-form" class="input-row">
+          <input type="password" id="gate-pw" placeholder="管理者パスワード" autocomplete="current-password">
+          <button type="submit" class="btn btn-secondary">ログイン</button>
+        </form>
+        <p id="gate-login-error" class="empty-message" hidden>パスワードが違います。</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=47"></script>
 </body>
 </html>

@@ -107,6 +107,14 @@
   var helpModal = document.getElementById("help-modal");
   var helpClose = document.getElementById("help-close");
   var helpBackdrop = document.getElementById("help-backdrop");
+  var authGate = document.getElementById("auth-gate");
+  var gateMemoForm = document.getElementById("gate-memo-form");
+  var gateMemoInput = document.getElementById("gate-memo-input");
+  var gateMemoError = document.getElementById("gate-memo-error");
+  var gateLoginForm = document.getElementById("gate-login-form");
+  var gatePw = document.getElementById("gate-pw");
+  var gateLoginError = document.getElementById("gate-login-error");
+  var authRequired = false;
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
@@ -766,10 +774,16 @@
   }
 
   // ---- メモ帳（共有付箋ボード）----
+  function authPw() { try { return sessionStorage.getItem("td-pw") || ""; } catch (e) { return ""; } }
   function apiGet(action, qs) {
-    return fetch(API + "?action=" + action + (qs || "")).then(function (r) { return r.json(); });
+    var pw = authPw();
+    return fetch(API + "?action=" + action + (qs || "") + (pw ? "&pw=" + encodeURIComponent(pw) : ""))
+      .then(function (r) { return r.json(); });
   }
   function apiPost(action, body) {
+    body = body || {};
+    var pw = authPw();
+    if (pw) body.pw = pw;
     return fetch(API + "?action=" + action, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -800,9 +814,12 @@
     apiGet("get_board", "&code=" + encodeURIComponent(code)).then(function (res) {
       if (!res || res.error) {
         memoTabError.hidden = false;
+        if (authGate && !authGate.hidden) gateMemoError.hidden = false;
         return;
       }
       memoTabError.hidden = true;
+      if (gateMemoError) gateMemoError.hidden = true;
+      if (authGate) authGate.hidden = true; // ゲート越しでも付箋ボードを表示
       memoCode = code;
       memoTeamEl.textContent = res.board.team_label; // ヘッダーにはチーム名を表示
       memoCodeEl.textContent = "No. " + res.board.code;
@@ -917,6 +934,17 @@
     memoCode = null;
     memoView.hidden = true;
     try { if (String(location.hash).indexOf("memo=") >= 0) location.hash = ""; } catch (e) {}
+    // 未ログインの参加者は、閉じたらゲートに戻す（管理画面に入れない）
+    if (authRequired && !authPw() && authGate) { gateMemoInput.value = ""; authGate.hidden = false; }
+  }
+  // ---- ログインゲート ----
+  function checkAuthGate() {
+    apiGet("auth_status").then(function (res) {
+      if (res && res.required) {
+        authRequired = true;
+        if (!authPw()) authGate.hidden = false;
+      }
+    }).catch(function () { /* 静的環境などは制限なし */ });
   }
   function exportCsv() {
     if (memoCode) window.open(API + "?action=export_csv&code=" + encodeURIComponent(memoCode), "_blank");
@@ -1309,6 +1337,23 @@
   openHelpBtn.addEventListener("click", function () { helpModal.hidden = false; });
   helpClose.addEventListener("click", function () { helpModal.hidden = true; });
   helpBackdrop.addEventListener("click", function () { helpModal.hidden = true; });
+
+  // ログインゲート
+  gateMemoForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    gateMemoError.hidden = true;
+    var c = gateMemoInput.value.trim();
+    if (c) openBoard(c);
+  });
+  gateLoginForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    gateLoginError.hidden = true;
+    try { sessionStorage.setItem("td-pw", gatePw.value); } catch (e2) {}
+    apiPost("auth", {}).then(function (res) {
+      if (res && res.ok) { authGate.hidden = true; gatePw.value = ""; }
+      else { try { sessionStorage.removeItem("td-pw"); } catch (e3) {} gateLoginError.hidden = false; }
+    }).catch(function () { gateLoginError.hidden = false; });
+  });
   noteForm.addEventListener("submit", function (e) { e.preventDefault(); addNote(); });
   rosterText.addEventListener("blur", saveRoster);
   memoCsvBtn.addEventListener("click", exportCsv);
@@ -1344,6 +1389,7 @@
   buildCatChips();
   loadEmployees(); // メンバー登録の検索プルダウン用に社員一覧を読み込む（サーバー版のみ）
   loadGroups();
+  checkAuthGate(); // パスワードが設定されていればログインゲートを表示
   // 共有リンク（#memo=番号）で直接メモ帳を開く
   (function () {
     var m = String(location.hash || "").match(/memo=([0-9]+)/);
