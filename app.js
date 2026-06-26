@@ -87,6 +87,9 @@
   var catsInput = document.getElementById("cats-input");
   var reportListEl = document.getElementById("report-list");
   var reportDetail = document.getElementById("report-detail");
+  var aggModal = document.getElementById("agg-modal");
+  var aggClose = document.getElementById("agg-close");
+  var aggBackdrop = document.getElementById("agg-backdrop");
   var empForm = document.getElementById("emp-form");
   var empName = document.getElementById("emp-name");
   var empAge = document.getElementById("emp-age");
@@ -952,7 +955,7 @@
 
   // ---- 集計（タブ） ----
   function loadReport() {
-    reportDetail.hidden = true;
+    if (aggModal) aggModal.hidden = true;
     reportDetail.innerHTML = "";
     reportListEl.innerHTML = '<p class="empty-message">読み込み中…</p>';
     apiGet("list_meetings").then(function (res) {
@@ -1071,7 +1074,7 @@
     return row;
   }
   function renderAggregate(a) {
-    reportDetail.hidden = false;
+    if (aggModal) aggModal.hidden = false;
     reportDetail.innerHTML = "";
     var h = document.createElement("h3");
     h.textContent = "📊 " + ((a.title && String(a.title).trim()) ? a.title : "(無題)") + " の集計";
@@ -1134,7 +1137,6 @@
       });
     })(a.meeting_id);
     reportDetail.appendChild(csv);
-    reportDetail.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   // ---- 社員一覧 ----
@@ -1337,6 +1339,8 @@
   openHelpBtn.addEventListener("click", function () { helpModal.hidden = false; });
   helpClose.addEventListener("click", function () { helpModal.hidden = true; });
   helpBackdrop.addEventListener("click", function () { helpModal.hidden = true; });
+  aggClose.addEventListener("click", function () { aggModal.hidden = true; });
+  aggBackdrop.addEventListener("click", function () { aggModal.hidden = true; });
 
   // ログインゲート
   gateMemoForm.addEventListener("submit", function (e) {

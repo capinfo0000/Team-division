@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>座談会</title>
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
   <div class="container">
@@ -167,7 +167,6 @@
     <div id="tab-report" class="tab-panel" hidden>
       <section class="card">
         <div id="report-list" class="report-list"></div>
-        <div id="report-detail" class="report-detail" hidden></div>
       </section>
     </div>
 
@@ -204,7 +203,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 47</p>
+    <p class="ver">ver. 48</p>
   </div>
 
 
@@ -290,6 +289,18 @@
     </div>
   </div>
 
+  <!-- 集計詳細ポップアップ -->
+  <div id="agg-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="agg-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>📊 集計</h3>
+        <button type="button" id="agg-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="report-detail" class="report-detail"></div>
+    </div>
+  </div>
+
   <!-- ログインゲート（参加者はメモ帳のみ・管理者はパスワード） -->
   <div id="auth-gate" class="auth-gate" hidden>
     <div class="auth-card">
@@ -314,6 +325,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=47"></script>
+  <script src="app.js?v=48"></script>
 </body>
 </html>

@@ -876,3 +876,7 @@ input:focus {
 .auth-sec { padding: 16px 0; }
 .auth-sec + .auth-sec { border-top: 1px dashed var(--border); }
 .auth-sec h3 { margin: 0 0 6px; font-size: 1.05rem; }
+
+/* 集計詳細はモーダル内に表示（内側のカード装飾は外す） */
+#agg-modal .report-detail { margin: 0; padding: 0; background: transparent; border: none; }
+#agg-modal .modal-card { max-width: 560px; }
