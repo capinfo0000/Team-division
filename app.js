@@ -2,34 +2,22 @@
   "use strict";
 
   var STORAGE_KEY = "team-division-members";
-  var SAVED_KEY = "team-division-saved";
   var ROLES_KEY = "team-division-roles";
-  var MEMOS_KEY = "team-division-memos";
-  var SESSION_KEY = "team-division-session";
   var DEFAULT_ROLES = ["書記", "発表", "司会", "タイムキーパー"];
 
-  // バックエンド（PHP API）のURL。空のままだと、この端末内だけのローカル保存で動作します。
-  // 本番（別端末で番号を入れて共有）するときは、配置した memo.php のURLを設定してください。
-  //   例: "https://example.com/team-division/api/memo.php"
-  var API_BASE = "";
-
-  // 5W1Hは項目分けせず、1つの入力欄に薄い記入例（プレースホルダー）で誘導する
-  var MEMO_PLACEHOLDER =
-    "例）こんな感じで5W1Hを意識して記入してください。\n" +
-    "いつ　　：来週月曜の朝礼で\n" +
-    "どこで　：第1会議室\n" +
-    "だれが　：田中さんが\n" +
-    "なにを　：新企画の提案資料を準備\n" +
-    "なぜ　　：承認をもらうため\n" +
-    "どうやって：スライド3枚にまとめて説明";
+  // メモ機能（共有付箋ボード）
+  var API = "api/api.php"; // Xserver上の同じ場所のapiフォルダを想定
+  var CATS_KEY = "team-division-cats";
+  var DEFAULT_CATS = ["意見", "質問", "アイデア", "感想", "その他"]; // 中立なラベル
+  var cats = loadCats();                 // 設定用（議題作成時に送る・議題ごとに編集可）
+  var mCats = DEFAULT_CATS.slice();      // 今開いているボードのラベル
+  var memoCode = null;
+  var memoCat = mCats[0];
+  var memoTimer = null;
 
   // ---- 状態 ----
   var members = loadMembers();
-  var savedLists = loadSaved(); // { 名前: [メンバー...] }
   var roles = loadRoles(); // 役割名の配列
-  var memos = loadMemos(); // { "チーム番号": "メモ本文" }（ローカル保存用）
-  var currentTeams = []; // 直近の結果一覧 [{ number, name, members:[名前...], code? }]
-  var currentSession = loadSession(); // { session_code, codeByNumber:{番号:team_code} } or null
 
   // ---- DOM ----
   var form = document.getElementById("member-form");
@@ -41,14 +29,6 @@
   var sizeInput = document.getElementById("size-input");
   var sizeUnit = document.getElementById("size-unit");
   var modeRadios = document.querySelectorAll('input[name="mode"]');
-  var saveForm = document.getElementById("save-form");
-  var saveNameInput = document.getElementById("save-name");
-  var savedListEl = document.getElementById("saved-list");
-  var savedEmpty = document.getElementById("saved-empty");
-  var savedModal = document.getElementById("saved-modal");
-  var openSavedBtn = document.getElementById("open-saved");
-  var savedCloseBtn = document.getElementById("saved-close");
-  var savedBackdrop = document.getElementById("saved-backdrop");
   var roleForm = document.getElementById("role-form");
   var roleNameInput = document.getElementById("role-name");
   var roleListEl = document.getElementById("role-list");
@@ -81,22 +61,67 @@
   var backBtn = document.getElementById("r-back");
   var tabsBar = document.getElementById("tabs-bar");
   var listStartBtn = document.getElementById("list-start");
-  var voiceEnabled = document.getElementById("voice-enabled");
+  var rVoice = document.getElementById("r-voice");
 
-  // ---- DOM（メモ／CSV）----
-  var memoCard = document.getElementById("memo-card");
-  var memoListEl = document.getElementById("memo-list");
-  var memoTeamInput = document.getElementById("memo-team-input");
-  var memoOpenBtn = document.getElementById("memo-open");
-  var exportCsvBtn = document.getElementById("export-csv");
-  var issueCodesBtn = document.getElementById("issue-codes");
-  var sessionInfoEl = document.getElementById("session-info");
-  var memoOpenInput = document.getElementById("memo-open-input");
-  var memoOpenStandaloneBtn = document.getElementById("memo-open-standalone");
-  var memoStandaloneEl = document.getElementById("memo-standalone");
+  // メモ機能 DOM
+  var makeMemoBtn = document.getElementById("r-make-memo");
+  var memoHint = document.getElementById("r-memo-hint");
+  var memoTabForm = document.getElementById("memo-tab-form");
+  var memoTabInput = document.getElementById("memo-tab-input");
+  var memoTabError = document.getElementById("memo-tab-error");
+  var memoView = document.getElementById("memo-view");
+  var memoTeamEl = document.getElementById("memo-team");
+  var memoCodeEl = document.getElementById("memo-code");
+  var memoCsvBtn = document.getElementById("memo-csv");
+  var memoCloseBtn = document.getElementById("memo-close");
+  var catChipsEl = document.getElementById("cat-chips");
+  var noteForm = document.getElementById("note-form");
+  var noteInput = document.getElementById("note-input");
+  var memoBoardEl = document.getElementById("memo-board");
+  var memoEmptyEl = document.getElementById("memo-empty");
+  var rosterText = document.getElementById("roster-text");
+  var rosterSaved = document.getElementById("roster-saved");
+  var stageCodesEl = document.getElementById("stage-codes");
+  var meetingTitleInput = document.getElementById("meeting-title");
+  var listTitleInput = document.getElementById("meeting-title-list");
+  var catsInput = document.getElementById("cats-input");
+  var reportListEl = document.getElementById("report-list");
+  var reportDetail = document.getElementById("report-detail");
+  var aggModal = document.getElementById("agg-modal");
+  var aggClose = document.getElementById("agg-close");
+  var aggBackdrop = document.getElementById("agg-backdrop");
+  var empForm = document.getElementById("emp-form");
+  var empName = document.getElementById("emp-name");
+  var empAge = document.getElementById("emp-age");
+  var empListEl = document.getElementById("emp-list");
+  var empEmpty = document.getElementById("emp-empty");
+  var empDatalist = document.getElementById("emp-datalist");
+  var employees = [];
+  var groupSelect = document.getElementById("group-select");
+  var groupLoadBtn = document.getElementById("group-load");
+  var groupDeleteBtn = document.getElementById("group-delete");
+  var groupSaveBtn = document.getElementById("group-save");
+  var groups = [];
+  var openEmpBtn = document.getElementById("open-emp");
+  var empModal = document.getElementById("emp-modal");
+  var empClose = document.getElementById("emp-close");
+  var empBackdrop = document.getElementById("emp-backdrop");
+  var openHelpBtn = document.getElementById("open-help");
+  var helpModal = document.getElementById("help-modal");
+  var helpClose = document.getElementById("help-close");
+  var helpBackdrop = document.getElementById("help-backdrop");
+  var authGate = document.getElementById("auth-gate");
+  var gateMemoForm = document.getElementById("gate-memo-form");
+  var gateMemoInput = document.getElementById("gate-memo-input");
+  var gateMemoError = document.getElementById("gate-memo-error");
+  var gateLoginForm = document.getElementById("gate-login-form");
+  var gatePw = document.getElementById("gate-pw");
+  var gateLoginError = document.getElementById("gate-login-error");
+  var authRequired = false;
 
   // ---- 状態（ルーレット）----
   var rMode = "person";    // "person"=1人ずつ / "team"=チームごと
+  var rBoards = null;      // 共有メモ作成後の [{code, team_label}]（チーム順）
   var rAssignments = [];
   var rLabels = [];        // 各参加者の表示名（名前 or 「N番目の人」）
   var rReturnTab = "roulette"; // 終了時に戻るタブ
@@ -125,24 +150,6 @@
     }
   }
 
-  function loadSaved() {
-    try {
-      var raw = localStorage.getItem(SAVED_KEY);
-      var obj = raw ? JSON.parse(raw) : {};
-      return obj && typeof obj === "object" ? obj : {};
-    } catch (e) {
-      return {};
-    }
-  }
-
-  function persistSaved() {
-    try {
-      localStorage.setItem(SAVED_KEY, JSON.stringify(savedLists));
-    } catch (e) {
-      /* 保存失敗は無視 */
-    }
-  }
-
   function loadRoles() {
     try {
       var raw = localStorage.getItem(ROLES_KEY);
@@ -162,127 +169,22 @@
     }
   }
 
-  function loadMemos() {
+  function loadCats() {
     try {
-      var raw = localStorage.getItem(MEMOS_KEY);
-      var obj = raw ? JSON.parse(raw) : {};
-      return obj && typeof obj === "object" ? obj : {};
+      var raw = localStorage.getItem(CATS_KEY);
+      if (raw === null) return DEFAULT_CATS.slice();
+      var arr = JSON.parse(raw);
+      return (Array.isArray(arr) && arr.length) ? arr : DEFAULT_CATS.slice();
     } catch (e) {
-      return {};
+      return DEFAULT_CATS.slice();
     }
   }
-
-  function saveMemos() {
-    try {
-      localStorage.setItem(MEMOS_KEY, JSON.stringify(memos));
-    } catch (e) {
-      /* 保存失敗は無視 */
-    }
+  function saveCats() {
+    try { localStorage.setItem(CATS_KEY, JSON.stringify(cats)); } catch (e) {}
   }
-
-  // チーム番号に対応するメモ本文（自由記述の1テキスト）を取得
-  function getMemoText(teamNumber) {
-    var v = memos[String(teamNumber)];
-    if (typeof v === "string") return v;
-    // 旧形式（項目別オブジェクト）が残っていれば1テキストに連結して救済
-    if (v && typeof v === "object") {
-      return Object.keys(v).map(function (k) { return v[k]; })
-        .filter(function (s) { return s; }).join("\n");
-    }
-    return "";
-  }
-
-  function setMemoText(teamNumber, text) {
-    memos[String(teamNumber)] = text;
-    saveMemos();
-  }
-
-  function loadSession() {
-    try {
-      var raw = localStorage.getItem(SESSION_KEY);
-      var obj = raw ? JSON.parse(raw) : null;
-      return obj && obj.session_code ? obj : null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function persistSession() {
-    try {
-      if (currentSession) {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(currentSession));
-      } else {
-        localStorage.removeItem(SESSION_KEY);
-      }
-    } catch (e) {
-      /* 保存失敗は無視 */
-    }
-  }
-
-  // ---- バックエンドAPI（任意）----
-  function apiEnabled() {
-    return typeof API_BASE === "string" && API_BASE !== "";
-  }
-
-  function apiUrl(params) {
-    var qs = [];
-    Object.keys(params || {}).forEach(function (k) {
-      qs.push(encodeURIComponent(k) + "=" + encodeURIComponent(params[k]));
-    });
-    if (!qs.length) return API_BASE;
-    return API_BASE + (API_BASE.indexOf("?") >= 0 ? "&" : "?") + qs.join("&");
-  }
-
-  function apiGet(params) {
-    return fetch(apiUrl(params), { method: "GET" }).then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    });
-  }
-
-  function apiPost(params, body) {
-    return fetch(apiUrl(params), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body || {})
-    }).then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    });
-  }
-
-  // ---- 音声読み上げ（ブラウザの音声合成）----
-  var speechPrimed = false;
-
-  // iOS Safari 等では、最初のユーザー操作の中で一度 speak() を呼んでおかないと、
-  // アニメーション後（setTimeout内）の読み上げがブロックされて無音になる。
-  // そこで最初のタップ時に無音の発話で音声エンジンを「解錠」しておく。
-  function primeSpeech() {
-    if (speechPrimed || !("speechSynthesis" in window)) return;
-    try {
-      var u = new SpeechSynthesisUtterance(" ");
-      u.volume = 0;
-      window.speechSynthesis.speak(u);
-      speechPrimed = true;
-    } catch (e) {
-      /* 無視 */
-    }
-  }
-
-  function speak(text) {
-    if (!voiceEnabled || !voiceEnabled.checked) return;
-    if (!("speechSynthesis" in window)) return;
-    try {
-      var synth = window.speechSynthesis;
-      if (synth.speaking || synth.pending) synth.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      u.lang = "ja-JP";
-      u.rate = 1.0;
-      synth.resume(); // 一部ブラウザで一時停止状態になるのを防ぐ
-      synth.speak(u);
-    } catch (e) {
-      /* 読み上げ失敗は無視 */
-    }
+  function parseCats(text) {
+    return text.split(/[\n,、，]+/).map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
   }
 
   // ---- メンバー操作 ----
@@ -312,86 +214,6 @@
     members = [];
     saveMembers();
     renderMembers();
-  }
-
-  // ---- 保存リスト（使い回し）----
-  function saveCurrentAsList(name) {
-    name = name.trim();
-    if (!name) {
-      window.alert("リスト名を入力してください。");
-      return;
-    }
-    if (members.length === 0) {
-      window.alert("保存するメンバーがいません。");
-      return;
-    }
-    if (
-      Object.prototype.hasOwnProperty.call(savedLists, name) &&
-      !window.confirm("「" + name + "」は既にあります。上書きしますか？")
-    ) {
-      return;
-    }
-    savedLists[name] = members.slice();
-    persistSaved();
-    renderSaved();
-  }
-
-  function loadList(name) {
-    var list = savedLists[name];
-    if (!list) return;
-    if (
-      members.length > 0 &&
-      !window.confirm("現在のメンバーを「" + name + "」で置き換えますか？")
-    ) {
-      return;
-    }
-    members = list.slice();
-    saveMembers();
-    renderMembers();
-    savedModal.hidden = true; // 呼び出したらポップアップを閉じる
-  }
-
-  function deleteList(name) {
-    if (!window.confirm("保存リスト「" + name + "」を削除しますか？")) return;
-    delete savedLists[name];
-    persistSaved();
-    renderSaved();
-  }
-
-  function renderSaved() {
-    var names = Object.keys(savedLists);
-    savedListEl.innerHTML = "";
-    savedEmpty.hidden = names.length > 0;
-
-    names.forEach(function (name) {
-      var li = document.createElement("li");
-
-      var nameEl = document.createElement("span");
-      nameEl.className = "saved-name";
-      nameEl.textContent = name;
-
-      var metaEl = document.createElement("span");
-      metaEl.className = "saved-meta";
-      metaEl.textContent = savedLists[name].length + "人";
-
-      var loadBtn = document.createElement("button");
-      loadBtn.type = "button";
-      loadBtn.className = "btn btn-primary";
-      loadBtn.textContent = "呼び出す";
-      loadBtn.addEventListener("click", function () { loadList(name); });
-
-      var delBtn = document.createElement("button");
-      delBtn.type = "button";
-      delBtn.className = "btn btn-text";
-      delBtn.textContent = "削除";
-      delBtn.addEventListener("click", function () { deleteList(name); });
-
-      li.appendChild(nameEl);
-      li.appendChild(metaEl);
-      li.appendChild(loadBtn);
-      li.appendChild(delBtn);
-      savedListEl.appendChild(li);
-    });
   }
 
   // ---- 役割 ----
@@ -489,12 +311,62 @@
     return roleArr.length > 0 ? roleArr.join(" / ") : "役割なし";
   }
 
+  // 結果を音声で読み上げ（対応ブラウザのみ）
+  function speak(text) {
+    if (!rVoice || !rVoice.checked) return;
+    if (typeof window.speechSynthesis === "undefined") return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP";
+      u.rate = 1;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* 非対応は無視 */ }
+  }
+
+  // 名前から年齢を引く（社員一覧から）。無ければ null
+  function ageOfName(name) {
+    for (var i = 0; i < employees.length; i++) {
+      if (employees[i].name === name) {
+        var a = employees[i].age;
+        return (a === null || a === undefined || a === "") ? null : Number(a);
+      }
+    }
+    return null;
+  }
+
+  // チーム割り当て。年齢が分かる人は、できるだけ同じ年齢が同チームに偏らないよう分散（ベストエフォート）。
+  function assignTeams(count, teamCount) {
+    // 年齢が一つも分からなければ従来どおり完全ランダム
+    var ages = [];
+    var hasAge = false;
+    for (var p = 0; p < count; p++) {
+      var a = (rLabels && rLabels[p] != null) ? ageOfName(rLabels[p]) : null;
+      ages.push(a);
+      if (a !== null) hasAge = true;
+    }
+    if (!hasAge) {
+      var rnd = [];
+      for (var i = 0; i < count; i++) rnd.push(i % teamCount);
+      rnd = shuffle(rnd);
+      return rnd;
+    }
+    // 年齢順に並べて（同年齢はランダム）、チームへ順番に配る＝近い年齢が別チームに散る
+    var withAge = [], noAge = [];
+    for (var q = 0; q < count; q++) (ages[q] !== null ? withAge : noAge).push(q);
+    withAge = shuffle(withAge).sort(function (x, y) { return ages[x] - ages[y]; });
+    noAge = shuffle(noAge);
+    var order = withAge.concat(noAge);
+    var teamOf = new Array(count);
+    var start = Math.floor(Math.random() * teamCount); // 毎回少し変える
+    order.forEach(function (pi, k) { teamOf[pi] = (start + k) % teamCount; });
+    return teamOf;
+  }
+
   // 人数・チーム数・役割から、全員分の割り当てを事前計算する
   function computeAssignments(count, teamCount, useRoles) {
-    var teamOf = [];
-    var i, p, t;
-    for (i = 0; i < count; i++) teamOf.push(i % teamCount); // 均等配分
-    teamOf = shuffle(teamOf);
+    var p, t;
+    var teamOf = assignTeams(count, teamCount);
 
     var membersByTeam = [];
     for (t = 0; t < teamCount; t++) membersByTeam.push([]);
@@ -532,17 +404,20 @@
     rAssignments = computeAssignments(rLabels.length, rTeamCount, rUseRoles);
     rTotal = rMode === "team" ? rTeamCount : rLabels.length;
     rCurrent = 0;
+    rBoards = null; // 新しい抽選なので共有メモはリセット
+    if (stageCodesEl) { stageCodesEl.hidden = true; stageCodesEl.innerHTML = ""; }
+    if (makeMemoBtn) makeMemoBtn.hidden = false;
+    if (memoHint) memoHint.hidden = true;
 
     // person モードのみリールに役割を出す（team モードは一覧側に表示）
     reelRoleEl.style.display =
       rMode === "person" && rUseRoles && roles.length > 0 ? "block" : "none";
-    tabsBar.hidden = true;
-    document.getElementById("tab-roulette").hidden = true;
-    document.getElementById("tab-list").hidden = true;
-    document.getElementById("tab-memo").hidden = true;
+    tabsBar.hidden = true;       // ルーレット中はタブ・設定（議題名）を隠す＝スタート後は変更不可
+    hideAllTabPanels();
     summaryCard.hidden = true;
     stageCard.hidden = false;
     revealStep(0);
+    issueBoards(); // チーム数は確定しているので番号を先に発行・表示
   }
 
   // ルーレット抽選タブ：人数指定 → 1人ずつ発表
@@ -597,7 +472,6 @@
   function exitStage() {
     stageCard.hidden = true;
     summaryCard.hidden = true;
-    memoCard.hidden = true;
     tabsBar.hidden = false;
     switchTab(rReturnTab);
   }
@@ -619,27 +493,25 @@
       revealBtn.textContent = teamName(s) + "の発表はこちら ▶";
       revealBtn.hidden = false;
     } else {
-      // 1人ずつ：発表ボタンを押してからルーレット。
-      // 前の人の結果は「？」に戻しておき、次の人には見えないようにする。
+      // 1人ずつ：ボタンを押すまでチームは「？」のまま（前の人の結果を見せない）
       progressEl.textContent = rTotal + "人中 " + (s + 1) + "人目";
       personEl.textContent = rLabels[s];
       reelEl.hidden = false;
       reelTeamEl.textContent = "？";
-      reelRoleEl.textContent = "？";
-      revealBtn.textContent = "発表！";
+      reelRoleEl.textContent = "";
+      revealBtn.textContent = "🎲 自分のチームを見る";
       revealBtn.hidden = false;
     }
   }
 
-  // 発表ボタンを押したら抽選演出を開始（person=1人ずつ / team=チーム単位）
+  // 発表ボタンを押したらルーレット開始（person=自分のチーム / team=チームの一覧）
   function onReveal() {
     if (spinning) return;
-    primeSpeech(); // 発表タップ時に音声を解錠（iOS対策）
     revealBtn.hidden = true;
-    if (rMode === "person") {
-      spinPerson(rCurrent);
-    } else {
+    if (rMode === "team") {
       spinTeam(rCurrent);
+    } else {
+      spinPerson(rCurrent);
     }
   }
 
@@ -661,17 +533,14 @@
       } else {
         var a = rAssignments[s];
         reelTeamEl.textContent = teamName(a.teamIndex);
-        reelRoleEl.textContent = roleLabel(a.roles);
+        var rLbl = roleLabel(a.roles);
+        reelRoleEl.textContent = rLbl;
         reelEl.classList.remove("spinning");
         reelEl.classList.add("settled");
         spinning = false;
-        var rl = roleLabel(a.roles);
-        speak(
-          rLabels[s] + " は、" + teamName(a.teamIndex) + " です" +
-          (rl && rl !== "役割なし" ? "。役割は " + rl : "")
-        );
         nextBtn.textContent = s === rTotal - 1 ? "結果を見る ▶" : "次の人へ ▶";
         nextBtn.hidden = false;
+        speak(teamName(a.teamIndex) + (rLbl ? "、" + rLbl : "")); // 音声読み上げ
       }
     }
     tick();
@@ -724,8 +593,6 @@
     });
     personEl.textContent = teamName(t);
     spinning = false;
-    var names = idxs.map(function (p) { return rLabels[p]; });
-    speak(teamName(t) + " は、" + names.join("、") + " です");
     nextBtn.textContent = t === rTotal - 1 ? "結果を見る ▶" : "次のチームへ ▶";
     nextBtn.hidden = false;
   }
@@ -759,16 +626,9 @@
     stageCard.hidden = true;
     summaryCard.hidden = false;
     summaryEl.innerHTML = "";
-    currentTeams = [];
 
     for (var t = 0; t < rTeamCount; t++) {
       var teamMembers = teamMemberIndices(t);
-
-      currentTeams.push({
-        number: t + 1,
-        name: teamName(t),
-        members: teamMembers.map(function (p) { return rLabels[p]; })
-      });
 
       var div = document.createElement("div");
       div.className = "team";
@@ -799,279 +659,106 @@
 
       div.appendChild(title);
       div.appendChild(ol);
+
+      // 共有メモ作成済みなら、このチームの番号と「メモを開く」を表示
+      if (rBoards && rBoards[t]) {
+        var codeRow = document.createElement("div");
+        codeRow.className = "team-code";
+        var codeNum = document.createElement("span");
+        codeNum.className = "code-num";
+        codeNum.textContent = "No. " + rBoards[t].code;
+        var openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "btn btn-secondary";
+        openBtn.textContent = "メモを開く";
+        (function (code) {
+          openBtn.addEventListener("click", function () { openBoard(code); });
+        })(rBoards[t].code);
+        codeRow.appendChild(codeNum);
+        codeRow.appendChild(openBtn);
+        div.appendChild(codeRow);
+      }
+
       summaryEl.appendChild(div);
     }
-
-    // 新しいチーム分けになったので、前回発行したセッションは一旦リセット
-    currentSession = null;
-    persistSession();
-    currentTeams.forEach(function (t) { t.code = null; });
-
-    issueCodesBtn.hidden = !apiEnabled();
-    issueCodesBtn.disabled = false;
-    issueCodesBtn.textContent = "📡 チーム番号を発行";
-    sessionInfoEl.hidden = true;
-
-    renderMemos(currentTeams);
-    memoCard.hidden = false;
   }
 
-  // ---- チームメモ ----
-  function renderMemos(teams) {
-    memoListEl.innerHTML = "";
-    teams.forEach(function (team) {
-      memoListEl.appendChild(buildMemoTeam(team));
-    });
-  }
-
-  // チームの保存先を決める（発行済みでAPI有効ならサーバー、それ以外は端末ローカル）
-  function memoTargetForTeam(team) {
-    if (apiEnabled() && team.code) return { kind: "server", code: team.code };
-    return { kind: "local", number: team.number };
-  }
-
-  function buildMemoTeam(team) {
-    var target = memoTargetForTeam(team);
-    var initial = target.kind === "local" ? getMemoText(team.number) : (team._memo || "");
-    return buildMemoEditor({
-      number: team.number,
-      name: team.name,
-      members: team.members,
-      code: team.code
-    }, target, initial);
-  }
-
-  // メモ1件分のエディタ（結果一覧・別端末タブの両方で使う共通部品）
-  function buildMemoEditor(team, target, initialText) {
-    var wrap = document.createElement("div");
-    wrap.className = "memo-team";
-    wrap.id = "memo-team-" + team.number;
-
-    var head = document.createElement("div");
-    head.className = "memo-team-head";
-    var title = document.createElement("div");
-    title.className = "memo-team-title";
-    var nameSpan = document.createElement("span");
-    nameSpan.textContent = team.name;
-    var countSpan = document.createElement("span");
-    countSpan.textContent = (team.members ? team.members.length : 0) + "人";
-    title.appendChild(nameSpan);
-    title.appendChild(countSpan);
-
-    var codeEl = document.createElement("div");
-    codeEl.className = "memo-team-code";
-    codeEl.textContent = "番号: " + (team.code || team.number) +
-      (target.kind === "server" ? "（別端末でこの番号を入力）" : "");
-
-    var membersEl = document.createElement("div");
-    membersEl.className = "memo-team-members";
-    membersEl.textContent = "メンバー: " +
-      ((team.members && team.members.length) ? team.members.join("、") : "（なし）");
-
-    head.appendChild(title);
-    head.appendChild(codeEl);
-    head.appendChild(membersEl);
-
-    // 1つの自由記述欄。記入例は薄いプレースホルダーで表示
-    var body = document.createElement("div");
-    body.className = "memo-body";
-    var ta = document.createElement("textarea");
-    ta.className = "memo-text";
-    ta.placeholder = MEMO_PLACEHOLDER;
-    ta.value = initialText || "";
-
-    var status = document.createElement("p");
-    status.className = "memo-status";
-
-    if (target.kind === "local") {
-      ta.addEventListener("input", function () {
-        setMemoText(target.number, ta.value);
-      });
-    } else {
-      // サーバー保存（入力が止まってから保存）
-      var timer = null;
-      ta.addEventListener("input", function () {
-        status.textContent = "入力中…";
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(function () {
-          status.textContent = "保存中…";
-          apiPost({ action: "save" }, { team_code: target.code, memo: ta.value })
-            .then(function () { status.textContent = "✓ サーバーに保存しました"; })
-            .catch(function () { status.textContent = "⚠ 保存に失敗（通信エラー）"; });
-        }, 700);
-      });
-    }
-
-    body.appendChild(ta);
-    body.appendChild(status);
-    wrap.appendChild(head);
-    wrap.appendChild(body);
-    return wrap;
-  }
-
-  // 「チーム番号を発行」：チーム構成をサーバーに登録し、番号（コード）を受け取る
-  function issueCodes() {
-    if (!apiEnabled()) {
-      window.alert("サーバー連携が未設定です（app.js の API_BASE を設定してください）。");
-      return;
-    }
-    if (currentTeams.length === 0) {
-      window.alert("先にチーム分けをしてください。");
-      return;
-    }
-    issueCodesBtn.disabled = true;
-    issueCodesBtn.textContent = "発行中…";
-    var payload = {
-      teams: currentTeams.map(function (t) {
-        return { team_number: t.number, team_name: t.name, members: t.members };
+  function makeMemo() {
+    if (!rTeamCount) return;
+    var labels = [];
+    for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
+    makeMemoBtn.disabled = true;
+    makeMemoBtn.textContent = "作成中…";
+    var title = getMeetingTitle();
+    apiPost("create_boards", { title: title, teams: labels, roles: roles, categories: cats })
+      .then(function (res) {
+        if (!res || !res.boards) throw new Error(res && res.error ? res.error : "作成に失敗しました");
+        rBoards = res.boards; // サーバーは送信順で返す＝チーム順
+        memoHint.hidden = false;
+        makeMemoBtn.hidden = true;
+        showSummary();
       })
-    };
-    apiPost({ action: "create" }, payload).then(function (res) {
-      currentSession = { session_code: res.session_code, codeByNumber: {} };
-      (res.teams || []).forEach(function (t) {
-        currentSession.codeByNumber[t.team_number] = t.team_code;
+      .catch(function (e) {
+        window.alert("共有メモの作成に失敗しました。\n(" + e.message + ")");
+      })
+      .then(function () {
+        makeMemoBtn.disabled = false;
+        makeMemoBtn.textContent = "🔗 共有メモを作成";
       });
-      currentTeams.forEach(function (t) {
-        t.code = currentSession.codeByNumber[t.number] || null;
-      });
-      persistSession();
-      renderMemos(currentTeams);
-      showSessionInfo();
-      issueCodesBtn.disabled = false;
-      issueCodesBtn.textContent = "🔄 番号を再発行";
-    }).catch(function () {
-      issueCodesBtn.disabled = false;
-      issueCodesBtn.textContent = "📡 チーム番号を発行";
-      window.alert("番号の発行に失敗しました。API_BASEの設定とサーバー（memo.php / DB）をご確認ください。");
+  }
+
+  // チーム番号の一覧をパネルに描画（先行発行の表示用）
+  function renderTeamCodes(el) {
+    if (!el) return;
+    el.innerHTML = "";
+    if (!rBoards) { el.hidden = true; return; }
+    var title = document.createElement("div");
+    title.className = "codes-title";
+    title.textContent = "📒 メモ番号（参加者に共有）";
+    el.appendChild(title);
+    rBoards.forEach(function (b) {
+      var row = document.createElement("div");
+      row.className = "code-row";
+      var name = document.createElement("span");
+      name.className = "code-team";
+      name.textContent = b.team_label;
+      var num = document.createElement("span");
+      num.className = "code-num";
+      num.textContent = "No. " + b.code;
+      var open = document.createElement("button");
+      open.type = "button";
+      open.className = "btn btn-secondary";
+      open.textContent = "開く";
+      (function (code) { open.addEventListener("click", function () { openBoard(code); }); })(b.code);
+      row.appendChild(name);
+      row.appendChild(num);
+      row.appendChild(open);
+      el.appendChild(row);
     });
+    el.hidden = false;
   }
 
-  function showSessionInfo() {
-    if (!currentSession) { sessionInfoEl.hidden = true; return; }
-    sessionInfoEl.textContent =
-      "集約コード: " + currentSession.session_code +
-      "（幹事用。CSVはこのコードの全チーム分をまとめて出力します）。" +
-      "各チームには下に表示された番号を伝えてください。";
-    sessionInfoEl.hidden = false;
+  // スタート時に各チームの番号を先行発行（サーバー版でのみ成功・失敗は無視）
+  function issueBoards() {
+    if (rBoards) return;
+    var labels = [];
+    for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
+    var title = getMeetingTitle();
+    apiPost("create_boards", { title: title, teams: labels, roles: roles, categories: cats }).then(function (res) {
+      if (res && res.boards) {
+        rBoards = res.boards;
+        renderTeamCodes(stageCodesEl);
+        if (makeMemoBtn) makeMemoBtn.hidden = true;
+        if (memoHint) memoHint.hidden = false;
+        if (!summaryCard.hidden) showSummary(); // 既に結果表示中なら反映
+      }
+    }).catch(function () { /* 静的環境では番号なし */ });
   }
 
-  // 別端末タブ：番号を入力してそのチームのメモを開く
-  function openStandaloneMemo() {
-    var raw = (memoOpenInput.value || "").trim();
-    if (!raw) {
-      window.alert("チーム番号を入力してください。");
-      return;
-    }
-    memoStandaloneEl.innerHTML = "";
-
-    if (apiEnabled()) {
-      var loading = document.createElement("p");
-      loading.className = "hint";
-      loading.textContent = "読み込み中…";
-      memoStandaloneEl.appendChild(loading);
-      apiGet({ team: raw }).then(function (row) {
-        memoStandaloneEl.innerHTML = "";
-        var members = (row.members || "").split(/\r?\n/).filter(Boolean);
-        var team = {
-          number: row.team_number,
-          name: row.team_name || ("チーム" + row.team_number),
-          members: members,
-          code: row.team_code
-        };
-        memoStandaloneEl.appendChild(
-          buildMemoEditor(team, { kind: "server", code: row.team_code }, row.memo || "")
-        );
-      }).catch(function () {
-        memoStandaloneEl.innerHTML = "";
-        var msg = document.createElement("p");
-        msg.className = "empty-message";
-        msg.textContent = "その番号のメモが見つかりませんでした。番号をご確認ください。";
-        memoStandaloneEl.appendChild(msg);
-      });
-    } else {
-      // ローカルのみ：番号＝チーム番号としてこの端末のメモを開く
-      var n = parseInt(raw, 10);
-      var team2 = { number: n, name: "チーム" + n, members: [], code: null };
-      memoStandaloneEl.appendChild(
-        buildMemoEditor(team2, { kind: "local", number: n }, getMemoText(n))
-      );
-    }
+  var TAB_IDS = ["tab-roulette", "tab-list", "tab-memo", "tab-report"];
+  function hideAllTabPanels() {
+    TAB_IDS.forEach(function (id) { document.getElementById(id).hidden = true; });
   }
-
-  // チーム番号でメモへスクロール＆フォーカス
-  function openMemoByNumber() {
-    var n = parseInt(memoTeamInput.value, 10);
-    if (isNaN(n)) {
-      window.alert("チーム番号を入力してください。");
-      return;
-    }
-    var el = document.getElementById("memo-team-" + n);
-    if (!el) {
-      window.alert("チーム " + n + " はありません（現在 " + currentTeams.length + " チーム）。");
-      return;
-    }
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    el.classList.remove("flash");
-    void el.offsetWidth; // アニメ再生のためリフロー
-    el.classList.add("flash");
-    var ta = el.querySelector("textarea");
-    if (ta) ta.focus();
-  }
-
-  // ---- CSV書き出し（AIが読み取りやすいlong形式: 1行=1項目）----
-  function csvField(value) {
-    var v = value == null ? "" : String(value);
-    if (/[",\n\r]/.test(v)) {
-      return '"' + v.replace(/"/g, '""') + '"';
-    }
-    return v;
-  }
-
-  // BOM付きでCSVをダウンロード（ExcelでもUTF-8日本語が文字化けしない）
-  function downloadCsv(rows) {
-    var csv = rows
-      .map(function (r) { return r.map(csvField).join(","); })
-      .join("\r\n");
-    var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    a.href = url;
-    a.download = "team-memos-" + stamp + ".csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function exportCsv() {
-    // サーバー連携＆発行済みなら、全端末で書かれた最新メモをまとめて取得して出力
-    if (apiEnabled() && currentSession && currentSession.session_code) {
-      apiGet({ session: currentSession.session_code }).then(function (res) {
-        var rows = [["team_number", "team_name", "members", "memo", "team_code"]];
-        (res.teams || []).forEach(function (t) {
-          var members = (t.members || "").split(/\r?\n/).filter(Boolean).join(" / ");
-          rows.push([t.team_number, t.team_name, members, t.memo || "", t.team_code]);
-        });
-        downloadCsv(rows);
-      }).catch(function () {
-        window.alert("CSVの取得に失敗しました（通信エラー）。");
-      });
-      return;
-    }
-
-    // ローカルのみ
-    if (currentTeams.length === 0) {
-      window.alert("先にチーム分けをしてください。");
-      return;
-    }
-    var rows = [["team_number", "team_name", "members", "memo"]];
-    currentTeams.forEach(function (team) {
-      rows.push([team.number, team.name, team.members.join(" / "), getMemoText(team.number)]);
-    });
-    downloadCsv(rows);
-  }
-
   function switchTab(name) {
     tabs.forEach(function (t) {
       t.classList.toggle("active", t.getAttribute("data-tab") === name);
@@ -1079,6 +766,525 @@
     document.getElementById("tab-roulette").hidden = name !== "roulette";
     document.getElementById("tab-list").hidden = name !== "list";
     document.getElementById("tab-memo").hidden = name !== "memo";
+    document.getElementById("tab-report").hidden = name !== "report";
+    if (name === "report") loadReport();
+    if (name === "list") { loadEmployees(); loadGroups(); }
+  }
+  // 現在のモードに応じた議題名を取得
+  function getMeetingTitle() {
+    var el = (rReturnTab === "list") ? listTitleInput : meetingTitleInput;
+    return el ? el.value.trim() : "";
+  }
+
+  // ---- メモ帳（共有付箋ボード）----
+  function authPw() { try { return sessionStorage.getItem("td-pw") || ""; } catch (e) { return ""; } }
+  function apiGet(action, qs) {
+    var pw = authPw();
+    return fetch(API + "?action=" + action + (qs || "") + (pw ? "&pw=" + encodeURIComponent(pw) : ""))
+      .then(function (r) { return r.json(); });
+  }
+  function apiPost(action, body) {
+    body = body || {};
+    var pw = authPw();
+    if (pw) body.pw = pw;
+    return fetch(API + "?action=" + action, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); });
+  }
+  // ラベル名から色を生成（固定表ではなく文字列ハッシュ＝任意のラベルに対応）
+  function catHue(key) {
+    var h = 0;
+    for (var i = 0; i < String(key).length; i++) h = (h * 31 + String(key).charCodeAt(i)) % 360;
+    return h;
+  }
+  function catColor(key) { return "hsl(" + catHue(key) + ", 55%, 42%)"; }
+  function catTint(key) { return "hsla(" + catHue(key) + ", 55%, 45%, 0.16)"; }
+  function buildCatChips() {
+    catChipsEl.innerHTML = "";
+    mCats.forEach(function (key) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "cat-chip" + (key === memoCat ? " active" : "");
+      b.textContent = key;
+      b.style.background = catColor(key);
+      b.addEventListener("click", function () { memoCat = key; buildCatChips(); noteInput.focus(); });
+      catChipsEl.appendChild(b);
+    });
+  }
+  function openBoard(code) {
+    apiGet("get_board", "&code=" + encodeURIComponent(code)).then(function (res) {
+      if (!res || res.error) {
+        memoTabError.hidden = false;
+        if (authGate && !authGate.hidden) gateMemoError.hidden = false;
+        return;
+      }
+      memoTabError.hidden = true;
+      if (gateMemoError) gateMemoError.hidden = true;
+      if (authGate) authGate.hidden = true; // ゲート越しでも付箋ボードを表示
+      memoCode = code;
+      memoTeamEl.textContent = res.board.team_label; // ヘッダーにはチーム名を表示
+      memoCodeEl.textContent = "No. " + res.board.code;
+      rosterText.value = (res.board.roster != null && res.board.roster !== "")
+        ? res.board.roster : buildRosterTemplate();
+      mCats = (res.categories && res.categories.length) ? res.categories : DEFAULT_CATS.slice();
+      memoCat = mCats[0];
+      buildCatChips();
+      renderNotes(res.notes);
+      memoView.hidden = false;
+      try { location.hash = "memo=" + code; } catch (e) {}
+      if (memoTimer) clearInterval(memoTimer);
+      memoTimer = setInterval(refreshBoard, 4000); // 他端末の更新を取り込む
+    }).catch(function () {
+      window.alert("接続できませんでした。メモ機能はサーバー版（Xserver）で利用してください。");
+    });
+  }
+  function refreshBoard() {
+    if (!memoCode) return;
+    apiGet("get_board", "&code=" + encodeURIComponent(memoCode)).then(function (res) {
+      if (res && res.notes) renderNotes(res.notes);
+      // 記入中でなければ他端末の更新を反映
+      if (res && res.board && document.activeElement !== rosterText) {
+        var v = res.board.roster != null ? res.board.roster : "";
+        if (v !== rosterText.value) rosterText.value = v;
+      }
+    }).catch(function () {});
+  }
+  function buildRosterTemplate() {
+    var lines = roles.map(function (r) { return r + "："; });
+    lines.push("メンバー：");
+    return lines.join("\n");
+  }
+  function saveRoster() {
+    if (!memoCode) return;
+    apiPost("save_roster", { code: memoCode, roster: rosterText.value }).then(function () {
+      if (rosterSaved) {
+        rosterSaved.hidden = false;
+        setTimeout(function () { rosterSaved.hidden = true; }, 1500);
+      }
+    }).catch(function () {});
+  }
+  function renderNotes(notes) {
+    memoBoardEl.innerHTML = "";
+    memoEmptyEl.hidden = notes.length > 0;
+    notes.forEach(function (n) {
+      var color = catColor(n.category);
+      var card = document.createElement("div");
+      card.className = "sticky";
+      card.style.background = catTint(n.category);
+      card.style.borderLeftColor = color;
+
+      var edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "sticky-edit";
+      edit.textContent = "✎";
+      edit.title = "編集";
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "sticky-del";
+      del.textContent = "×";
+      (function (note) {
+        edit.addEventListener("click", function () { editNote(note); });
+        del.addEventListener("click", function () { deleteNote(note.id); });
+      })(n);
+
+      var cat = document.createElement("span");
+      cat.className = "sticky-cat";
+      cat.textContent = n.category;
+      cat.style.color = color;
+
+      var body = document.createElement("div");
+      body.className = "sticky-body";
+      body.textContent = n.body;
+
+      var meta = document.createElement("div");
+      meta.className = "sticky-meta";
+      meta.textContent = n.created_at ? String(n.created_at).substring(5, 16) : "";
+
+      card.appendChild(edit);
+      card.appendChild(del);
+      card.appendChild(cat);
+      card.appendChild(body);
+      card.appendChild(meta);
+      memoBoardEl.appendChild(card);
+    });
+  }
+  function editNote(note) {
+    var body = window.prompt("付箋の内容を編集", note.body);
+    if (body === null) return;
+    body = body.trim();
+    if (body === "") return;
+    apiPost("update_note", { code: memoCode, id: note.id, body: body }).then(function (res) {
+      if (res && res.ok) refreshBoard();
+      else window.alert("更新に失敗しました" + (res && res.error ? "：" + res.error : ""));
+    }).catch(function () { window.alert("更新に失敗しました（接続不可）"); });
+  }
+  function addNote() {
+    var text = noteInput.value.trim();
+    if (!text || !memoCode) return;
+    apiPost("add_note", { code: memoCode, category: memoCat, body: text }).then(function (res) {
+      if (res && res.note) { noteInput.value = ""; refreshBoard(); }
+      else window.alert("保存に失敗しました");
+    }).catch(function () { window.alert("保存に失敗しました（接続不可）"); });
+  }
+  function deleteNote(id) {
+    if (!window.confirm("この付箋を削除しますか？")) return;
+    apiPost("delete_note", { code: memoCode, id: id }).then(function () { refreshBoard(); }).catch(function () {});
+  }
+  function closeBoard() {
+    if (memoTimer) { clearInterval(memoTimer); memoTimer = null; }
+    memoCode = null;
+    memoView.hidden = true;
+    try { if (String(location.hash).indexOf("memo=") >= 0) location.hash = ""; } catch (e) {}
+    // 未ログインの参加者は、閉じたらゲートに戻す（管理画面に入れない）
+    if (authRequired && !authPw() && authGate) { gateMemoInput.value = ""; authGate.hidden = false; }
+  }
+  // ---- ログインゲート ----
+  function checkAuthGate() {
+    apiGet("auth_status").then(function (res) {
+      if (res && res.required) {
+        authRequired = true;
+        if (!authPw()) authGate.hidden = false;
+      }
+    }).catch(function () { /* 静的環境などは制限なし */ });
+  }
+  function exportCsv() {
+    if (memoCode) window.open(API + "?action=export_csv&code=" + encodeURIComponent(memoCode), "_blank");
+  }
+
+  // ---- 集計（タブ） ----
+  function loadReport() {
+    if (aggModal) aggModal.hidden = true;
+    reportDetail.innerHTML = "";
+    reportListEl.innerHTML = '<p class="empty-message">読み込み中…</p>';
+    apiGet("list_meetings").then(function (res) {
+      if (!res || !res.meetings) {
+        var msg = (res && res.error)
+          ? "取得できませんでした：" + res.error
+          : "取得できませんでした（メモ機能はサーバー版で利用してください）。";
+        reportListEl.innerHTML = '<p class="empty-message"></p>';
+        reportListEl.firstChild.textContent = msg;
+        return;
+      }
+      renderMeetings(res.meetings);
+    }).catch(function () {
+      reportListEl.innerHTML = '<p class="empty-message">接続できませんでした（メモ機能はサーバー版で利用してください）。</p>';
+    });
+  }
+  function renderMeetings(list) {
+    reportListEl.innerHTML = "";
+    var h = document.createElement("h3");
+    h.textContent = "ミーティング一覧（議題ごとに分かれています）";
+    reportListEl.appendChild(h);
+    if (list.length === 0) {
+      var e = document.createElement("p");
+      e.className = "empty-message";
+      e.textContent = "まだ集計できるデータがありません。";
+      reportListEl.appendChild(e);
+      return;
+    }
+    list.forEach(function (m) {
+      var item = document.createElement("div");
+      item.className = "report-item";
+      var info = document.createElement("div");
+      var t = document.createElement("div");
+      t.className = "ri-title";
+      t.textContent = (m.title && String(m.title).trim()) ? m.title : "(無題)";
+      var sub = document.createElement("div");
+      sub.className = "ri-sub";
+      var date = m.created_at ? String(m.created_at).substring(0, 16) : "";
+      sub.textContent = date + " ／ " + m.team_count + "チーム ／ " + m.note_count + "メモ";
+      info.appendChild(t);
+      info.appendChild(sub);
+
+      var btns = document.createElement("div");
+      btns.className = "report-item-btns";
+      var view = document.createElement("button");
+      view.className = "btn btn-primary";
+      view.textContent = "集計を見る";
+      var csv = document.createElement("button");
+      csv.className = "btn btn-secondary";
+      csv.textContent = "CSV";
+      (function (id) {
+        view.addEventListener("click", function () { openAggregate(id); });
+        csv.addEventListener("click", function () {
+          window.open(API + "?action=export_csv&meeting=" + encodeURIComponent(id), "_blank");
+        });
+      })(m.meeting_id);
+      btns.appendChild(view);
+      btns.appendChild(csv);
+
+      item.appendChild(info);
+      item.appendChild(btns);
+      reportListEl.appendChild(item);
+
+      // 各チームの番号（再確認）＋ボードを開いて確認・修正
+      if (m.boards && m.boards.length) {
+        var codes = document.createElement("div");
+        codes.className = "ri-codes";
+        m.boards.forEach(function (b) {
+          var row = document.createElement("div");
+          row.className = "code-row";
+          var nm = document.createElement("span");
+          nm.className = "code-team";
+          nm.textContent = b.team_label;
+          var num = document.createElement("span");
+          num.className = "code-num";
+          num.textContent = "No. " + b.code;
+          var open = document.createElement("button");
+          open.type = "button";
+          open.className = "btn btn-secondary";
+          open.textContent = "開く";
+          (function (code) { open.addEventListener("click", function () { openBoard(code); }); })(b.code);
+          row.appendChild(nm);
+          row.appendChild(num);
+          row.appendChild(open);
+          codes.appendChild(row);
+        });
+        reportListEl.appendChild(codes);
+      }
+    });
+  }
+  function openAggregate(meetingId) {
+    apiGet("aggregate", "&meeting=" + encodeURIComponent(meetingId)).then(function (a) {
+      if (!a || a.error) return;
+      renderAggregate(a);
+    }).catch(function () {});
+  }
+  function bar(label, cnt, max, color) {
+    var row = document.createElement("div");
+    row.className = "bar-row";
+    var lab = document.createElement("span");
+    lab.className = "bar-label";
+    lab.textContent = label;
+    var track = document.createElement("span");
+    track.className = "bar-track";
+    var fill = document.createElement("span");
+    fill.className = "bar-fill";
+    fill.style.width = Math.round((cnt / max) * 100) + "%";
+    fill.style.background = color;
+    track.appendChild(fill);
+    var val = document.createElement("span");
+    val.className = "bar-val";
+    val.textContent = cnt;
+    row.appendChild(lab);
+    row.appendChild(track);
+    row.appendChild(val);
+    return row;
+  }
+  function renderAggregate(a) {
+    if (aggModal) aggModal.hidden = false;
+    reportDetail.innerHTML = "";
+    var h = document.createElement("h3");
+    h.textContent = "📊 " + ((a.title && String(a.title).trim()) ? a.title : "(無題)") + " の集計";
+    reportDetail.appendChild(h);
+    var meta = document.createElement("p");
+    meta.className = "hint";
+    var date = a.created_at ? String(a.created_at).substring(0, 16) : "";
+    meta.textContent = date + " ／ " + a.team_count + "チーム ／ 合計 " + a.total_notes + "メモ";
+    reportDetail.appendChild(meta);
+
+    var ch = document.createElement("h4");
+    ch.textContent = "カテゴリ別";
+    reportDetail.appendChild(ch);
+    if (a.by_category.length === 0) {
+      var e = document.createElement("p");
+      e.className = "empty-message";
+      e.textContent = "メモがありません。";
+      reportDetail.appendChild(e);
+    } else {
+      var maxC = 1;
+      a.by_category.forEach(function (c) { if (+c.cnt > maxC) maxC = +c.cnt; });
+      a.by_category.forEach(function (c) {
+        reportDetail.appendChild(bar(c.category, +c.cnt, maxC, catColor(c.category)));
+      });
+    }
+
+    // カテゴリ別の意見（本文）一覧 ＝ 同じ議題の全チーム分を合算
+    if (a.notes && a.notes.length) {
+      var oh = document.createElement("h4");
+      oh.textContent = "意見一覧（全チーム合算）";
+      reportDetail.appendChild(oh);
+      // 出現するカテゴリを件数順に（by_category）。漏れがあれば末尾に。
+      var catOrder = a.by_category.map(function (c) { return c.category; });
+      a.notes.forEach(function (n) { if (catOrder.indexOf(n.category) < 0) catOrder.push(n.category); });
+      catOrder.forEach(function (key) {
+        var items = a.notes.filter(function (n) { return n.category === key; });
+        if (!items.length) return;
+        var head = document.createElement("div");
+        head.className = "op-head";
+        head.textContent = key + "（" + items.length + "）";
+        head.style.color = catColor(key);
+        reportDetail.appendChild(head);
+        items.forEach(function (n) {
+          var item = document.createElement("div");
+          item.className = "op-item";
+          item.style.borderLeftColor = catColor(key);
+          item.textContent = n.body;
+          reportDetail.appendChild(item);
+        });
+      });
+    }
+
+    var csv = document.createElement("button");
+    csv.className = "btn btn-secondary";
+    csv.textContent = "このミーティングのCSVを出力";
+    csv.style.marginTop = "16px";
+    (function (id) {
+      csv.addEventListener("click", function () {
+        window.open(API + "?action=export_csv&meeting=" + encodeURIComponent(id), "_blank");
+      });
+    })(a.meeting_id);
+    reportDetail.appendChild(csv);
+  }
+
+  // ---- 社員一覧 ----
+  function loadEmployees() {
+    apiGet("list_employees").then(function (res) {
+      if (res && res.employees) {
+        employees = res.employees;
+        renderEmployees();
+        renderEmpDatalist();
+      } else if (empEmpty) {
+        empEmpty.textContent = "取得できませんでした" + (res && res.error ? "：" + res.error : "（サーバー版で利用してください）");
+        empEmpty.hidden = false;
+      }
+    }).catch(function () {
+      if (empEmpty) {
+        empEmpty.textContent = "接続できませんでした（メモ機能はサーバー版で利用してください）。";
+        empEmpty.hidden = false;
+      }
+    });
+  }
+  function renderEmpDatalist() {
+    if (!empDatalist) return;
+    empDatalist.innerHTML = "";
+    employees.forEach(function (e) {
+      var opt = document.createElement("option");
+      opt.value = e.name;
+      if (e.age !== null && e.age !== undefined && e.age !== "") opt.label = e.name + "（" + e.age + "）";
+      empDatalist.appendChild(opt);
+    });
+  }
+  function renderEmployees() {
+    empListEl.innerHTML = "";
+    empEmpty.hidden = employees.length > 0;
+    employees.forEach(function (e) {
+      var li = document.createElement("li");
+      var name = document.createElement("span");
+      name.className = "emp-name";
+      name.textContent = e.name;
+      var age = document.createElement("span");
+      age.className = "emp-age";
+      age.textContent = (e.age !== null && e.age !== undefined && e.age !== "") ? e.age + "歳" : "—";
+      var add = document.createElement("button");
+      add.type = "button";
+      add.className = "btn btn-primary";
+      add.textContent = "＋メンバー";
+      var edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "btn btn-secondary";
+      edit.textContent = "編集";
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn btn-text";
+      del.textContent = "削除";
+      (function (emp) {
+        add.addEventListener("click", function () { addMembers(emp.name); });
+        edit.addEventListener("click", function () { editEmployee(emp); });
+        del.addEventListener("click", function () { deleteEmployee(emp); });
+      })(e);
+      li.appendChild(name);
+      li.appendChild(age);
+      li.appendChild(add);
+      li.appendChild(edit);
+      li.appendChild(del);
+      empListEl.appendChild(li);
+    });
+  }
+  function saveEmployee(payload) {
+    apiPost("save_employee", payload).then(function (res) {
+      if (res && res.employee) loadEmployees();
+      else window.alert("保存に失敗しました" + (res && res.error ? "：" + res.error : ""));
+    }).catch(function () { window.alert("保存に失敗しました（接続不可）"); });
+  }
+  function addEmployeeFromForm() {
+    var name = empName.value.trim();
+    if (!name) return;
+    var age = empAge.value.trim();
+    saveEmployee({ name: name, age: age });
+    empName.value = "";
+    empAge.value = "";
+    empName.focus();
+  }
+  function editEmployee(emp) {
+    var name = window.prompt("名前", emp.name);
+    if (name === null) return;
+    name = name.trim();
+    if (!name) return;
+    var ageStr = window.prompt("年齢（空欄可）", (emp.age !== null && emp.age !== undefined) ? emp.age : "");
+    if (ageStr === null) return;
+    saveEmployee({ id: emp.id, name: name, age: ageStr.trim() });
+  }
+  function deleteEmployee(emp) {
+    if (!window.confirm("「" + emp.name + "」を社員一覧から削除しますか？")) return;
+    apiPost("delete_employee", { id: emp.id }).then(function () { loadEmployees(); }).catch(function () {});
+  }
+
+  // ---- 保存グループ ----
+  function loadGroups() {
+    apiGet("list_groups").then(function (res) {
+      if (res && res.groups) {
+        groups = res.groups;
+        renderGroupSelect();
+      }
+    }).catch(function () {});
+  }
+  function renderGroupSelect() {
+    if (!groupSelect) return;
+    var cur = groupSelect.value;
+    groupSelect.innerHTML = "";
+    var ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = groups.length ? "保存グループを選択…" : "保存グループはありません";
+    groupSelect.appendChild(ph);
+    groups.forEach(function (g) {
+      var opt = document.createElement("option");
+      opt.value = String(g.id);
+      opt.textContent = g.name + "（" + g.members.length + "人）";
+      groupSelect.appendChild(opt);
+    });
+    groupSelect.value = cur;
+  }
+  function saveGroup() {
+    if (members.length === 0) { window.alert("保存するメンバーがいません。"); return; }
+    var name = window.prompt("グループ名を入力してください（例: 営業部）", "");
+    if (name === null) return;
+    name = name.trim();
+    if (!name) return;
+    apiPost("save_group", { name: name, members: members }).then(function (res) {
+      if (res && res.group) loadGroups();
+      else window.alert("保存に失敗しました" + (res && res.error ? "：" + res.error : "（サーバー版で利用してください）"));
+    }).catch(function () { window.alert("保存に失敗しました（接続不可）"); });
+  }
+  function loadGroup() {
+    var id = groupSelect.value;
+    if (!id) return;
+    var g = groups.filter(function (x) { return String(x.id) === id; })[0];
+    if (!g) return;
+    if (members.length > 0 && !window.confirm("現在のメンバーを「" + g.name + "」で置き換えますか？")) return;
+    members = g.members.slice();
+    saveMembers();
+    renderMembers();
+  }
+  function deleteGroupSel() {
+    var id = groupSelect.value;
+    if (!id) return;
+    var g = groups.filter(function (x) { return String(x.id) === id; })[0];
+    if (!g) return;
+    if (!window.confirm("グループ「" + g.name + "」を削除しますか？")) return;
+    apiPost("delete_group", { id: g.id }).then(function () { loadGroups(); }).catch(function () {});
   }
 
   // ---- イベント ----
@@ -1095,11 +1301,8 @@
     rRoleNameInput.focus();
   });
 
-  // 最初のタップで音声エンジンを解錠（iOS Safari対策）
-  document.addEventListener("pointerdown", primeSpeech, { once: true });
-
-  rStartBtn.addEventListener("click", function () { primeSpeech(); startRoulette(); });
-  listStartBtn.addEventListener("click", function () { primeSpeech(); startListRoulette(); });
+  rStartBtn.addEventListener("click", startRoulette);
+  listStartBtn.addEventListener("click", startListRoulette);
   revealBtn.addEventListener("click", onReveal);
   nextBtn.addEventListener("click", nextStep);
   abortBtn.addEventListener("click", exitStage);
@@ -1107,15 +1310,58 @@
     rAssignments = computeAssignments(rLabels.length, rTeamCount, rUseRoles);
     rCurrent = 0;
     summaryCard.hidden = true;
-    memoCard.hidden = true;
     stageCard.hidden = false;
     revealStep(0);
   });
   backBtn.addEventListener("click", exitStage);
-  memoOpenBtn.addEventListener("click", openMemoByNumber);
-  exportCsvBtn.addEventListener("click", exportCsv);
-  issueCodesBtn.addEventListener("click", issueCodes);
-  memoOpenStandaloneBtn.addEventListener("click", openStandaloneMemo);
+
+  // メモ機能
+  makeMemoBtn.addEventListener("click", makeMemo);
+  memoTabForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    memoTabError.hidden = true;
+    var c = memoTabInput.value.trim();
+    if (c) openBoard(c);
+  });
+  empForm.addEventListener("submit", function (e) { e.preventDefault(); addEmployeeFromForm(); });
+  groupSaveBtn.addEventListener("click", saveGroup);
+  groupLoadBtn.addEventListener("click", loadGroup);
+  groupDeleteBtn.addEventListener("click", deleteGroupSel);
+  catsInput.addEventListener("change", function () {
+    var parsed = parseCats(catsInput.value);
+    cats = parsed.length ? parsed : DEFAULT_CATS.slice();
+    saveCats();
+    catsInput.value = cats.join("、");
+  });
+  openEmpBtn.addEventListener("click", function () { empModal.hidden = false; loadEmployees(); });
+  empClose.addEventListener("click", function () { empModal.hidden = true; });
+  empBackdrop.addEventListener("click", function () { empModal.hidden = true; });
+  openHelpBtn.addEventListener("click", function () { helpModal.hidden = false; });
+  helpClose.addEventListener("click", function () { helpModal.hidden = true; });
+  helpBackdrop.addEventListener("click", function () { helpModal.hidden = true; });
+  aggClose.addEventListener("click", function () { aggModal.hidden = true; });
+  aggBackdrop.addEventListener("click", function () { aggModal.hidden = true; });
+
+  // ログインゲート
+  gateMemoForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    gateMemoError.hidden = true;
+    var c = gateMemoInput.value.trim();
+    if (c) openBoard(c);
+  });
+  gateLoginForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    gateLoginError.hidden = true;
+    try { sessionStorage.setItem("td-pw", gatePw.value); } catch (e2) {}
+    apiPost("auth", {}).then(function (res) {
+      if (res && res.ok) { authGate.hidden = true; gatePw.value = ""; }
+      else { try { sessionStorage.removeItem("td-pw"); } catch (e3) {} gateLoginError.hidden = false; }
+    }).catch(function () { gateLoginError.hidden = false; });
+  });
+  noteForm.addEventListener("submit", function (e) { e.preventDefault(); addNote(); });
+  rosterText.addEventListener("blur", saveRoster);
+  memoCsvBtn.addEventListener("click", exportCsv);
+  memoCloseBtn.addEventListener("click", closeBoard);
 
   form.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -1127,22 +1373,12 @@
     }
   });
 
-  saveForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    saveCurrentAsList(saveNameInput.value);
-    saveNameInput.value = "";
-  });
-
   roleForm.addEventListener("submit", function (e) {
     e.preventDefault();
     addRole(roleNameInput.value);
     roleNameInput.value = "";
     roleNameInput.focus();
   });
-
-  openSavedBtn.addEventListener("click", function () { savedModal.hidden = false; });
-  savedCloseBtn.addEventListener("click", function () { savedModal.hidden = true; });
-  savedBackdrop.addEventListener("click", function () { savedModal.hidden = true; });
 
   clearBtn.addEventListener("click", clearMembers);
   modeRadios.forEach(function (r) {
@@ -1151,7 +1387,16 @@
 
   // ---- 初期化 ----
   renderMembers();
-  renderSaved();
   renderRoles();
   updateUnit();
+  if (catsInput) catsInput.value = cats.join("、");
+  buildCatChips();
+  loadEmployees(); // メンバー登録の検索プルダウン用に社員一覧を読み込む（サーバー版のみ）
+  loadGroups();
+  checkAuthGate(); // パスワードが設定されていればログインゲートを表示
+  // 共有リンク（#memo=番号）で直接メモ帳を開く
+  (function () {
+    var m = String(location.hash || "").match(/memo=([0-9]+)/);
+    if (m) openBoard(m[1]);
+  })();
 })();

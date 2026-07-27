@@ -6,21 +6,23 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>チーム分けアプリ</title>
-  <link rel="stylesheet" href="style.css?v=24">
+  <title>座談会</title>
+  <link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>🎲 チーム分けアプリ</h1>
-      <p class="subtitle">人数だけで抽選、または名前を入力してチーム単位で発表</p>
+      <h1>🗣️ 座談会</h1>
+      <p class="subtitle">チーム分け・ルーレット発表・共有メモ</p>
+      <button type="button" id="open-help" class="help-btn">❔ 使い方</button>
     </header>
 
     <!-- タブ -->
     <div class="tabs" id="tabs-bar">
-      <button type="button" class="tab active" data-tab="roulette">🎰 ルーレット抽選</button>
-      <button type="button" class="tab" data-tab="list">📝 名前でチーム発表</button>
-      <button type="button" class="tab" data-tab="memo">🗒️ メモを開く</button>
+      <button type="button" class="tab active" data-tab="roulette">🎰 抽選</button>
+      <button type="button" class="tab" data-tab="list">🎲 一括抽選</button>
+      <button type="button" class="tab" data-tab="memo">📒 メモ帳</button>
+      <button type="button" class="tab" data-tab="report">📊 集計</button>
     </div>
 
     <!-- ===================== ルーレット抽選 ===================== -->
@@ -53,6 +55,16 @@
           <p class="hint">人数が役割より多いチームでは「役割なし」、少ないチームでは1人が兼任します。</p>
         </div>
 
+        <label class="checkbox-row">
+          <input type="checkbox" id="r-voice" checked>
+          自分のチームが出たら音声で読み上げる
+        </label>
+
+        <div class="topic-field">
+          <label class="topic-label" for="meeting-title">議題名（任意）</label>
+          <input type="text" id="meeting-title" placeholder="2026年8月：今後の座談会について" autocomplete="off" maxlength="100">
+        </div>
+
         <button type="button" id="r-start" class="btn btn-big btn-primary">▶ スタート</button>
       </section>
     </div>
@@ -64,11 +76,11 @@
       <section class="card">
         <h2>1. メンバー登録</h2>
         <form id="member-form" class="input-row">
-          <input type="text" id="member-name" placeholder="名前を入力" autocomplete="off" maxlength="30">
-          <button type="submit" class="btn btn-primary">追加</button>
-          <button type="button" id="open-saved" class="btn btn-secondary">📂 保存リスト</button>
+          <input type="text" id="member-name" list="emp-datalist" placeholder="名前を入力 / 社員を検索" autocomplete="off" maxlength="30">
+          <button type="submit" class="btn btn-primary">確定</button>
         </form>
-        <p class="hint">複数まとめて追加する場合は、改行・カンマ・スペース区切りでも入力できます。</p>
+        <datalist id="emp-datalist"></datalist>
+        <p class="hint">社員一覧から検索して選べます。複数まとめて追加する場合は、改行・カンマ・スペース区切りでも入力できます。</p>
 
         <div class="member-header">
           <span id="member-count" class="badge">0人</span>
@@ -76,6 +88,19 @@
         </div>
         <ul id="member-list" class="member-list"></ul>
         <p id="empty-message" class="empty-message">まだメンバーがいません。上から追加してください。</p>
+
+        <!-- グループ（選択中メンバーの保存・呼び出し） -->
+        <div class="group-block">
+          <div class="group-row">
+            <select id="group-select" class="group-select"><option value="">保存グループを選択…</option></select>
+            <button type="button" id="group-load" class="btn btn-secondary">呼び出す</button>
+            <button type="button" id="group-delete" class="btn btn-text">削除</button>
+          </div>
+          <div class="dual-actions">
+            <button type="button" id="open-emp" class="btn btn-secondary">👥 社員を管理</button>
+            <button type="button" id="group-save" class="btn btn-primary">💾 グループ保存</button>
+          </div>
+        </div>
       </section>
 
       <!-- 役割設定 -->
@@ -112,21 +137,36 @@
           <span id="size-unit" class="unit">チーム</span>
         </div>
         <p class="hint">割り切れない場合は、できるだけ均等になるように振り分けます。</p>
+        <div class="topic-field">
+          <label class="topic-label" for="meeting-title-list">議題名（任意）</label>
+          <input type="text" id="meeting-title-list" placeholder="2026年8月：今後の座談会について" autocomplete="off" maxlength="100">
+        </div>
+        <div class="topic-field">
+          <label class="topic-label" for="cats-input">メモのラベル（カンマ区切り・議題に合わせて変更可）</label>
+          <input type="text" id="cats-input" placeholder="意見, 質問, アイデア, 感想, その他" autocomplete="off" maxlength="120">
+        </div>
         <button type="button" id="list-start" class="btn btn-big btn-primary">🎰 ルーレットでスタート</button>
         <p class="hint">「Aチームの発表はこちら」を押すと、リスト内でメンバー名がシャッフル→確定（役割の人が上）。チームごとに発表します。</p>
       </section>
     </div>
 
-    <!-- ===================== メモを開く（別端末用） ===================== -->
+    <!-- ===================== メモ帳（番号入力） ===================== -->
     <div id="tab-memo" class="tab-panel" hidden>
       <section class="card">
-        <h2>チームメモを開く</h2>
-        <p class="hint">幹事から伝えられた「チーム番号」を入力すると、そのチームのメモを書けます。サーバー連携が設定されていれば、別端末で書いた内容もこの番号で開けます（未設定の場合はこの端末内のメモのみ）。</p>
-        <div class="input-row">
-          <input type="number" id="memo-open-input" inputmode="numeric" placeholder="チーム番号">
-          <button type="button" id="memo-open-standalone" class="btn btn-primary">メモを開く</button>
-        </div>
-        <div id="memo-standalone" class="memo-teams"></div>
+        <h2>📒 メモ帳を開く</h2>
+        <p class="hint">チーム分けで発行された番号を入力してください。</p>
+        <form id="memo-tab-form" class="input-row">
+          <input type="tel" id="memo-tab-input" class="code-input-big" inputmode="numeric" placeholder="例: 123456" autocomplete="off" maxlength="12">
+          <button type="submit" class="btn btn-primary">開く</button>
+        </form>
+        <p id="memo-tab-error" class="empty-message" hidden>その番号のメモ帳が見つかりませんでした。</p>
+      </section>
+    </div>
+
+    <!-- ===================== 集計 ===================== -->
+    <div id="tab-report" class="tab-panel" hidden>
+      <section class="card">
+        <div id="report-list" class="report-list"></div>
       </section>
     </div>
 
@@ -134,13 +174,11 @@
     <section class="card stage-card" id="roulette-stage" hidden>
       <div class="progress" id="r-progress">6人中 1人目</div>
       <div class="person-label" id="r-person">1番目の人</div>
-      <label class="checkbox-row voice-row">
-        <input type="checkbox" id="voice-enabled" checked>
-        🔊 結果を音声で読み上げる
-      </label>
 
       <button type="button" id="r-reveal" class="btn btn-big btn-primary" hidden>発表！</button>
       <button type="button" id="r-next" class="btn btn-big btn-secondary" hidden>次の人へ ▶</button>
+
+      <div id="stage-codes" class="team-codes" hidden></div>
 
       <div class="reel" id="r-reel">
         <div class="reel-team" id="r-reel-team">？</div>
@@ -156,52 +194,137 @@
       <div class="result-header">
         <h2>結果一覧</h2>
         <div class="result-actions">
+          <button type="button" id="r-make-memo" class="btn btn-primary">🔗 共有メモを作成</button>
           <button type="button" id="r-again" class="btn btn-secondary">🔀 もう一度</button>
           <button type="button" id="r-back" class="btn btn-text">設定に戻る</button>
         </div>
       </div>
+      <p id="r-memo-hint" class="hint" hidden>各チームの番号を参加者に伝えてください。番号を入力するとそのチームのメモ帳が開きます。</p>
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <!-- ===================== チームメモ（5W1H） ===================== -->
-    <section class="card" id="memo-card" hidden>
-      <div class="result-header">
-        <h2>チームメモ（5W1H）</h2>
-        <div class="result-actions">
-          <button type="button" id="issue-codes" class="btn btn-primary" hidden>📡 チーム番号を発行</button>
-          <button type="button" id="export-csv" class="btn btn-secondary">⬇ CSVで書き出す</button>
-        </div>
-      </div>
-      <p id="session-info" class="session-info" hidden></p>
-      <p class="hint">オフラインの話し合いを各チーム1つの欄に自由記述で記録できます（薄い文字は記入例です）。内容は自動保存されます。「📡 チーム番号を発行」を押すと各チームに番号が割り当てられ、別端末でその番号を入力して同じメモを編集できます（サーバー連携時）。「CSVで書き出す」で1チーム＝1行で出力します。</p>
-      <div class="input-row memo-open-row">
-        <input type="number" id="memo-team-input" min="1" placeholder="チーム番号">
-        <button type="button" id="memo-open" class="btn btn-primary">この一覧内で開く</button>
-      </div>
-      <div id="memo-list" class="memo-teams"></div>
-    </section>
-
-    <p class="ver">ver. 24</p>
+    <p class="ver">ver. 48</p>
   </div>
 
-  <!-- 保存リスト（ポップアップ） -->
-  <div id="saved-modal" class="modal" hidden>
-    <div class="modal-backdrop" id="saved-backdrop"></div>
+
+  <!-- メモ帳（付箋ボード） -->
+  <div id="memo-view" class="memo-view" hidden>
+    <div class="memo-head">
+      <div class="memo-title">
+        <span id="memo-team" class="memo-team">チーム</span>
+        <span id="memo-code" class="memo-code">#000000</span>
+      </div>
+      <div class="memo-actions">
+        <button type="button" id="memo-csv" class="btn btn-secondary">CSV出力</button>
+        <button type="button" id="memo-close" class="btn btn-text">閉じる</button>
+      </div>
+    </div>
+
+    <div class="memo-roster">
+      <div class="roster-head">👥 メンバー / 役割（名前を記入してください）</div>
+      <textarea id="roster-text" class="roster-text" rows="4" placeholder="司会：ヤマダ&#10;発表：サトウ&#10;メンバー：スズキ、タナカ"></textarea>
+      <span id="roster-saved" class="roster-saved" hidden>保存しました</span>
+    </div>
+
+    <div class="memo-compose">
+      <div class="cat-chips" id="cat-chips"></div>
+      <form id="note-form" class="compose-row">
+        <textarea id="note-input" rows="3" placeholder="ここに書いて「貼る」（改行OK・文字数制限なし）"></textarea>
+        <button type="submit" id="note-add" class="btn btn-primary">貼る</button>
+      </form>
+    </div>
+
+    <div id="memo-board" class="memo-board"></div>
+    <p id="memo-empty" class="empty-message">まだ付箋がありません。上から貼ってみましょう。</p>
+  </div>
+
+  <!-- 社員追加ポップアップ -->
+  <div id="emp-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="emp-backdrop"></div>
     <div class="modal-card">
       <div class="modal-head">
-        <h3>📂 保存リスト</h3>
-        <button type="button" id="saved-close" class="modal-close" aria-label="閉じる">×</button>
+        <h3>👥 社員一覧</h3>
+        <button type="button" id="emp-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <p class="hint">今のメンバーに名前を付けて保存しておくと、いつでも呼び出して使い回せます。</p>
-      <form id="save-form" class="input-row">
-        <input type="text" id="save-name" placeholder="リスト名（例: 〇〇チーム）" autocomplete="off" maxlength="30">
-        <button type="submit" class="btn btn-secondary">現在のメンバーを保存</button>
+      <form id="emp-form" class="input-row">
+        <input type="text" id="emp-name" placeholder="名前" autocomplete="off" maxlength="50">
+        <input type="number" id="emp-age" class="emp-age-input" placeholder="年齢" min="0" max="150">
+        <button type="submit" class="btn btn-primary">＋ 新規追加</button>
       </form>
-      <ul id="saved-list" class="saved-list"></ul>
-      <p id="saved-empty" class="empty-message">保存されたリストはありません。</p>
+      <p class="hint">登録した社員は、メンバー登録の検索プルダウンに出ます。各行の「＋メンバー」で選択に追加できます。</p>
+      <ul id="emp-list" class="emp-list"></ul>
+      <p id="emp-empty" class="empty-message">社員が登録されていません。</p>
     </div>
   </div>
 
-  <script src="app.js?v=24"></script>
+  <!-- 使い方ポップアップ -->
+  <div id="help-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="help-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>❔ 使い方</h3>
+        <button type="button" id="help-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="help-body">
+        <h4>🎰 抽選</h4>
+        <p>人数とチーム数だけ決めて「スタート」。1人ずつ「自分のチームを見る」を押すと、その人のチーム（と役割）がルーレットで表示されます。前の人の結果は伏せられ、希望すれば音声でも読み上げます。</p>
+
+        <h4>🎲 一括抽選</h4>
+        <p>名前を登録してチーム分けします。
+          <br>・<b>メンバー登録</b>：名前を入力（社員一覧から検索候補が出ます）して「確定」で作業リストに入れます。
+          <br>・<b>👥 社員を管理</b>：ポップアップが開き、よく使う人を「＋新規追加」で登録（年齢も任意）。各行の「＋メンバー」で素早くリストに追加、編集・削除も可能。
+          <br>・<b>💾 グループ保存</b>：今のメンバーに名前を付けて保存。次回はプルダウンで選んで「呼び出す」（不要なら「削除」）。
+          <br>・<b>役割</b>：書記・司会などを設定するとチーム内にランダム割り当て（人数が足りなければ兼任）。
+          <br>・<b>チーム分け設定</b>：チーム数 or 1チームの人数を指定し、議題名を入れて「ルーレットでスタート」。チームごとに発表します。</p>
+
+        <h4>📒 メモ帳</h4>
+        <p>チーム分け後に発行される「チーム番号」を入力すると、その議題の共有メモ（付箋ボード）が開きます。カテゴリ（議題/良い点/課題/アイデア/質問/メモ）を選んで一言ずつ貼るだけ。別端末からも同じ番号で参加でき、内容は自動で同期されます。メンバー記入欄に司会・発表などの担当も書けます。</p>
+
+        <h4>📊 集計</h4>
+        <p>議題ごとに付箋の件数をカテゴリ別に表示します。CSV出力して別システムでの要約に使えます。※プライバシーのため、付箋は「どのチームか」を保存しません。</p>
+
+        <h4>👥 補足</h4>
+        <p>チーム番号は議題（1回のチーム分け）ごとに分かれ、過去の回と混ざりません。番号やリンク（末尾 #memo=番号）を共有すれば参加者がすぐ開けます。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 集計詳細ポップアップ -->
+  <div id="agg-modal" class="modal" hidden>
+    <div class="modal-backdrop" id="agg-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>📊 集計</h3>
+        <button type="button" id="agg-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="report-detail" class="report-detail"></div>
+    </div>
+  </div>
+
+  <!-- ログインゲート（参加者はメモ帳のみ・管理者はパスワード） -->
+  <div id="auth-gate" class="auth-gate" hidden>
+    <div class="auth-card">
+      <h2>🗣️ 座談会</h2>
+      <div class="auth-sec">
+        <h3>📒 参加者の方</h3>
+        <p class="hint">配られたチーム番号でメモ帳を開けます（ログイン不要）。</p>
+        <form id="gate-memo-form" class="input-row">
+          <input type="tel" id="gate-memo-input" class="code-input-big" inputmode="numeric" placeholder="例: 123456" autocomplete="off" maxlength="12">
+          <button type="submit" class="btn btn-primary">メモ帳を開く</button>
+        </form>
+        <p id="gate-memo-error" class="empty-message" hidden>その番号のメモ帳が見つかりませんでした。</p>
+      </div>
+      <div class="auth-sec">
+        <h3>🔑 管理者の方</h3>
+        <form id="gate-login-form" class="input-row">
+          <input type="password" id="gate-pw" placeholder="管理者パスワード" autocomplete="current-password">
+          <button type="submit" class="btn btn-secondary">ログイン</button>
+        </form>
+        <p id="gate-login-error" class="empty-message" hidden>パスワードが違います。</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=48"></script>
 </body>
 </html>
