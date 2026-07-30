@@ -723,6 +723,11 @@
     title.className = "codes-title";
     title.textContent = "📒 メモ番号（参加者に共有）";
     el.appendChild(title);
+    // 見出しの直後に、サイトを開く小さいQRを常時表示
+    var qrBox = document.createElement("div");
+    qrBox.className = "site-qr site-qr-inline";
+    el.appendChild(qrBox);
+    renderSiteQr(qrBox);
     rBoards.forEach(function (b) {
       var row = document.createElement("div");
       row.className = "code-row";
