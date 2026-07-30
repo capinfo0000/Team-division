@@ -17,10 +17,11 @@ CREATE TABLE IF NOT EXISTS member_groups (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 議題ごとのラベル列を追加（既存meetingsに無ければ追加）
-ALTER TABLE meetings ADD COLUMN categories TEXT NULL;
+-- ※ MariaDB は IF NOT EXISTS 対応。既に列があってもエラーで止まらない。
+ALTER TABLE meetings ADD COLUMN IF NOT EXISTS categories TEXT NULL;
 
 -- 議題の詳細列を追加（既存meetingsに無ければ追加）
-ALTER TABLE meetings ADD COLUMN detail TEXT NULL;
+ALTER TABLE meetings ADD COLUMN IF NOT EXISTS detail TEXT NULL;
 
 -- 付箋を「チーム（board）単位で表示分離」できるように作り直す。
 -- 表示は board_id 単位（各チームは自分の付箋だけ）／集計・CSVは meeting_id 単位で合算（匿名）。
