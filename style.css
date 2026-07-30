@@ -546,17 +546,33 @@ input:focus {
   inset: 0;
   background: var(--bg);
   z-index: 200;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;           /* 上部固定をやめ、画面全体をスクロール */
+  -webkit-overflow-scrolling: touch;
 }
 .memo-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.memo-head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 18px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
+}
+.memo-topic { }
+.memo-topic-title { font-size: 1.15rem; font-weight: 800; line-height: 1.4; }
+.memo-topic-detail {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .memo-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .memo-team { font-size: 1.3rem; font-weight: 800; }
@@ -593,13 +609,14 @@ input:focus {
 }
 
 .memo-board {
-  flex: 1;
-  overflow-y: auto;
   padding: 18px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: 1fr;       /* スマホ：画面いっぱいに1つ */
   gap: 14px;
   align-content: start;
+}
+@media (min-width: 700px) {
+  .memo-board { grid-template-columns: repeat(2, 1fr); }  /* PC：2列 */
 }
 .sticky {
   position: relative;
@@ -609,8 +626,11 @@ input:focus {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   border-left: 6px solid rgba(0,0,0,0.25);
   word-break: break-word;
+  overflow-wrap: anywhere;          /* 長い文字列も枠内で折り返す */
   white-space: pre-wrap;
-  animation: pop 0.2s ease;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;                 /* 枠からのはみ出しを防ぐ */
 }
 .sticky .sticky-cat {
   font-size: 0.7rem;
@@ -619,7 +639,36 @@ input:focus {
   display: block;
   margin-bottom: 4px;
 }
-.sticky .sticky-body { font-size: 1rem; font-weight: 600; line-height: 1.45; }
+.sticky .sticky-body { font-size: 1rem; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; word-break: break-word; }
+/* 付箋の中でそのまま編集 */
+.sticky .sticky-edit-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 70px;
+  margin-top: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+.sticky .sticky-edit-actions { display: flex; gap: 8px; margin-top: 8px; }
+.btn-sm { padding: 5px 12px; font-size: 0.85rem; }
+
+/* サイトを開くQR（番号共有画面） */
+.site-qr {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 16px;
+  padding: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.site-qr-img { width: 128px; height: 128px; display: block; }
+.site-qr-cap { font-size: 0.78rem; color: var(--muted); }
 .sticky .sticky-meta {
   position: absolute;
   left: 14px;
