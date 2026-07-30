@@ -782,6 +782,11 @@ input:focus {
 .topic-field { margin: 4px 0 14px; }
 .topic-field .topic-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
 .topic-field input { width: 100%; }
+.topic-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;   /* サイズ固定（伸縮不可） */
+}
 
 /* ---- 社員一覧 ---- */
 .tabs { flex-wrap: wrap; }
