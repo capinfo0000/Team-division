@@ -748,6 +748,8 @@ input:focus {
 .ri-sub { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
 .report-item-btns { display: flex; gap: 8px; flex-shrink: 0; }
 .report-item-btns .btn { padding: 8px 12px; font-size: 0.85rem; }
+.report-item-btns .ri-del { color: var(--danger); }
+.report-item-btns .ri-del:hover { text-decoration: underline; }
 
 .report-detail {
   margin-top: 18px; background: var(--card); border: 1px solid var(--border);

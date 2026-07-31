@@ -1070,6 +1070,13 @@
       reportListEl.innerHTML = '<p class="empty-message">接続できませんでした（メモ機能はサーバー版で利用してください）。</p>';
     });
   }
+  function deleteMeeting(meetingId, title) {
+    if (!window.confirm("議題「" + title + "」を削除します。\nこの議題の付箋・チーム番号もすべて消えます。よろしいですか？")) return;
+    apiPost("delete_meeting", { meeting_id: meetingId }).then(function (res) {
+      if (res && res.ok) loadReport();
+      else window.alert("削除に失敗しました" + (res && res.error ? "：" + res.error : ""));
+    }).catch(function () { window.alert("削除に失敗しました（接続不可）"); });
+  }
   function renderMeetings(list) {
     reportListEl.innerHTML = "";
     var h = document.createElement("h3");
@@ -1104,14 +1111,19 @@
       var csv = document.createElement("button");
       csv.className = "btn btn-secondary";
       csv.textContent = "CSV";
-      (function (id) {
+      var del = document.createElement("button");
+      del.className = "btn btn-text ri-del";
+      del.textContent = "🗑 削除";
+      (function (id, mtitle) {
         view.addEventListener("click", function () { openAggregate(id); });
         csv.addEventListener("click", function () {
           window.open(API + "?action=export_csv&meeting=" + encodeURIComponent(id), "_blank");
         });
-      })(m.meeting_id);
+        del.addEventListener("click", function () { deleteMeeting(id, mtitle); });
+      })(m.meeting_id, (m.title && String(m.title).trim()) ? m.title : "(無題)");
       btns.appendChild(view);
       btns.appendChild(csv);
+      btns.appendChild(del);
 
       item.appendChild(info);
       item.appendChild(btns);

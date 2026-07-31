@@ -59,7 +59,7 @@ try {
   if ($action === 'auth') { jsonOut(['ok' => authOk()]); }
 
   // 管理者のみの操作はパスワードで保護（メモ帳系＝参加者の入力は保護しない）
-  $PROTECTED = ['create_boards', 'list_meetings', 'aggregate', 'export_csv',
+  $PROTECTED = ['create_boards', 'list_meetings', 'aggregate', 'export_csv', 'delete_meeting',
                 'list_employees', 'save_employee', 'delete_employee',
                 'list_groups', 'save_group', 'delete_group'];
   if (in_array($action, $PROTECTED, true) && !authOk()) {
@@ -109,6 +109,17 @@ try {
       $boards[] = ['code' => $code, 'team_label' => $label];
     }
     jsonOut(['meeting_id' => $meeting, 'title' => $title, 'boards' => $boards]);
+  }
+
+  if ($action === 'delete_meeting') {
+    // body: { meeting_id }  議題ごと削除（付箋・ボードも一緒に消える）
+    $in = readJson();
+    $meeting = trim((string)($in['meeting_id'] ?? ''));
+    if ($meeting === '') jsonOut(['error' => 'meeting_id が必要です'], 400);
+    $pdo->prepare('DELETE FROM notes    WHERE meeting_id = ?')->execute([$meeting]);
+    $pdo->prepare('DELETE FROM boards   WHERE meeting_id = ?')->execute([$meeting]);
+    $pdo->prepare('DELETE FROM meetings WHERE meeting_id = ?')->execute([$meeting]);
+    jsonOut(['ok' => true]);
   }
 
   if ($action === 'list_employees') {
