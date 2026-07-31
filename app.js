@@ -833,6 +833,12 @@
     var el = (rReturnTab === "list") ? listDetailInput : meetingDetailInput;
     return el ? el.value.trim() : "";
   }
+  // 詳細欄：内容に合わせて高さを自動調整（長い文章で枠が広がる）
+  function autoGrow(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
   // サイトのURL（末尾のindex.html・ハッシュ・クエリを除く）
   function siteUrl() {
     try { return (location.origin + location.pathname).replace(/index\.html?$/i, ""); }
@@ -1484,6 +1490,10 @@
     addCat(rCatNameInput.value);
     rCatNameInput.value = "";
     rCatNameInput.focus();
+  });
+  // 詳細欄は入力に合わせて高さを自動調整
+  [meetingDetailInput, listDetailInput].forEach(function (el) {
+    if (el) el.addEventListener("input", function () { autoGrow(el); });
   });
   openEmpBtn.addEventListener("click", function () { empModal.hidden = false; loadEmployees(); });
   empClose.addEventListener("click", function () { empModal.hidden = true; });

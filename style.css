@@ -74,6 +74,7 @@ input[type="number"] {
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 1rem;
+  font-family: inherit;   /* テキストエリアと同じフォントに揃える */
   outline: none;
   transition: border-color 0.15s;
 }
@@ -790,8 +791,19 @@ input:focus {
 .topic-field textarea {
   width: 100%;
   box-sizing: border-box;
-  resize: none;   /* サイズ固定（伸縮不可） */
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;   /* 他の入力欄と同じフォントに */
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.15s;
+  resize: none;           /* 手動リサイズは無効（内容に応じて自動で伸びる） */
+  overflow: hidden;
+  min-height: 46px;       /* 他の入力欄と同程度の高さ */
 }
+.topic-field textarea:focus { border-color: var(--primary); }
 
 /* ---- 社員一覧 ---- */
 .tabs { flex-wrap: wrap; }
