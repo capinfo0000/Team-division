@@ -87,7 +87,10 @@
   var stageCodesEl = document.getElementById("stage-codes");
   var meetingTitleInput = document.getElementById("meeting-title");
   var listTitleInput = document.getElementById("meeting-title-list");
-  var catsInput = document.getElementById("cats-input");
+  var catsForm = document.getElementById("cats-form");
+  var catNameInput = document.getElementById("cat-name");
+  var catsListEl = document.getElementById("cats-list");
+  var catsEmpty = document.getElementById("cats-empty");
   var reportListEl = document.getElementById("report-list");
   var reportDetail = document.getElementById("report-detail");
   var aggModal = document.getElementById("agg-modal");
@@ -185,10 +188,6 @@
   function saveCats() {
     try { localStorage.setItem(CATS_KEY, JSON.stringify(cats)); } catch (e) {}
   }
-  function parseCats(text) {
-    return text.split(/[\n,、，]+/).map(function (s) { return s.trim(); })
-      .filter(function (s) { return s.length > 0; });
-  }
 
   // ---- メンバー操作 ----
   function addMembers(text) {
@@ -258,6 +257,40 @@
     renderRoleListInto(roleListEl);
     renderRoleListInto(rRoleListEl);
     if (roleEmpty) roleEmpty.hidden = roles.length > 0;
+  }
+
+  // ---- メモのラベル（役割と同じ操作感：追加していく／×で削除）----
+  function addCat(name) {
+    name = name.trim();
+    if (!name) return;
+    if (cats.indexOf(name) !== -1) return; // 重複は無視
+    cats.push(name);
+    saveCats();
+    renderCats();
+  }
+  function removeCat(index) {
+    cats.splice(index, 1);
+    saveCats();
+    renderCats();
+  }
+  function renderCats() {
+    if (!catsListEl) return;
+    catsListEl.innerHTML = "";
+    cats.forEach(function (name, i) {
+      var li = document.createElement("li");
+      var span = document.createElement("span");
+      span.textContent = name;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "remove";
+      btn.textContent = "×";
+      btn.setAttribute("aria-label", name + " を削除");
+      btn.addEventListener("click", function () { removeCat(i); });
+      li.appendChild(span);
+      li.appendChild(btn);
+      catsListEl.appendChild(li);
+    });
+    if (catsEmpty) catsEmpty.hidden = cats.length > 0;
   }
 
   // ---- 描画 ----
@@ -1431,11 +1464,11 @@
   groupSaveBtn.addEventListener("click", saveGroup);
   groupLoadBtn.addEventListener("click", loadGroup);
   groupDeleteBtn.addEventListener("click", deleteGroupSel);
-  catsInput.addEventListener("change", function () {
-    var parsed = parseCats(catsInput.value);
-    cats = parsed.length ? parsed : DEFAULT_CATS.slice();
-    saveCats();
-    catsInput.value = cats.join("、");
+  catsForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    addCat(catNameInput.value);
+    catNameInput.value = "";
+    catNameInput.focus();
   });
   openEmpBtn.addEventListener("click", function () { empModal.hidden = false; loadEmployees(); });
   empClose.addEventListener("click", function () { empModal.hidden = true; });
@@ -1494,7 +1527,7 @@
   renderMembers();
   renderRoles();
   updateUnit();
-  if (catsInput) catsInput.value = cats.join("、");
+  renderCats();
   buildCatChips();
   loadEmployees(); // メンバー登録の検索プルダウン用に社員一覧を読み込む（サーバー版のみ）
   loadGroups();
