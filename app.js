@@ -91,6 +91,10 @@
   var catNameInput = document.getElementById("cat-name");
   var catsListEl = document.getElementById("cats-list");
   var catsEmpty = document.getElementById("cats-empty");
+  var rCatsForm = document.getElementById("r-cats-form");
+  var rCatNameInput = document.getElementById("r-cat-name");
+  var rCatsListEl = document.getElementById("r-cats-list");
+  var rCatsEmpty = document.getElementById("r-cats-empty");
   var reportListEl = document.getElementById("report-list");
   var reportDetail = document.getElementById("report-detail");
   var aggModal = document.getElementById("agg-modal");
@@ -273,9 +277,9 @@
     saveCats();
     renderCats();
   }
-  function renderCats() {
-    if (!catsListEl) return;
-    catsListEl.innerHTML = "";
+  function renderCatListInto(ul) {
+    if (!ul) return;
+    ul.innerHTML = "";
     cats.forEach(function (name, i) {
       var li = document.createElement("li");
       var span = document.createElement("span");
@@ -288,9 +292,14 @@
       btn.addEventListener("click", function () { removeCat(i); });
       li.appendChild(span);
       li.appendChild(btn);
-      catsListEl.appendChild(li);
+      ul.appendChild(li);
     });
+  }
+  function renderCats() {
+    renderCatListInto(catsListEl);
+    renderCatListInto(rCatsListEl);
     if (catsEmpty) catsEmpty.hidden = cats.length > 0;
+    if (rCatsEmpty) rCatsEmpty.hidden = cats.length > 0;
   }
 
   // ---- 描画 ----
@@ -1469,6 +1478,12 @@
     addCat(catNameInput.value);
     catNameInput.value = "";
     catNameInput.focus();
+  });
+  if (rCatsForm) rCatsForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    addCat(rCatNameInput.value);
+    rCatNameInput.value = "";
+    rCatNameInput.focus();
   });
   openEmpBtn.addEventListener("click", function () { empModal.hidden = false; loadEmployees(); });
   empClose.addEventListener("click", function () { empModal.hidden = true; });

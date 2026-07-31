@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>座談会</title>
-  <link rel="stylesheet" href="style.css?v=53">
+  <link rel="stylesheet" href="style.css?v=54">
 </head>
 <body>
   <div class="container">
@@ -67,6 +67,15 @@
         <div class="topic-field">
           <label class="topic-label" for="meeting-detail">詳細（任意）</label>
           <textarea id="meeting-detail" rows="2" placeholder="議題の補足・進め方・お願いなど（メモ帳の上部に表示されます）" maxlength="500"></textarea>
+        </div>
+        <div class="topic-field">
+          <label class="topic-label">メモのラベル（議題に合わせて追加）</label>
+          <form id="r-cats-form" class="input-row">
+            <input type="text" id="r-cat-name" placeholder="ラベル名（例: 意見）" autocomplete="off" maxlength="20">
+            <button type="submit" class="btn btn-primary">追加</button>
+          </form>
+          <ul id="r-cats-list" class="member-list"></ul>
+          <p id="r-cats-empty" class="empty-message" hidden>ラベルがありません。上から追加してください。</p>
         </div>
 
         <button type="button" id="r-start" class="btn btn-big btn-primary">▶ スタート</button>
@@ -204,7 +213,7 @@
       <div id="r-summary" class="teams"></div>
     </section>
 
-    <p class="ver">ver. 53</p>
+    <p class="ver">ver. 54</p>
   </div>
 
 
@@ -335,7 +344,7 @@
     </div>
   </div>
 
-  <script src="qrcode.js?v=53"></script>
-  <script src="app.js?v=53"></script>
+  <script src="qrcode.js?v=54"></script>
+  <script src="app.js?v=54"></script>
 </body>
 </html>
