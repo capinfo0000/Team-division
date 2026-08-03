@@ -658,20 +658,22 @@ input:focus {
 
 /* サイトを開くQR（番号共有画面） */
 .site-qr {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin: 4px 0 16px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 4px auto 16px;   /* 左右autoで中央寄せ */
   padding: 10px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
 .site-qr-img { width: 120px; height: 120px; display: block; }
-.site-qr-cap { font-size: 0.78rem; color: var(--muted); }
-/* 番号一覧パネル内の小さめQR（見出し直後・左寄せ） */
-.site-qr-inline { align-items: flex-start; margin: 8px 0 12px; padding: 8px; }
+.site-qr-cap { font-size: 0.78rem; color: var(--muted); text-align: center; }
+/* 番号一覧パネル内の小さめQR（見出し直後・中央） */
+.site-qr-inline { margin: 8px auto 12px; padding: 8px; }
 .site-qr-inline .site-qr-img { width: 96px; height: 96px; }
 .sticky .sticky-meta {
   position: absolute;
