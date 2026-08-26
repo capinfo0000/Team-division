@@ -66,9 +66,12 @@
   // メモ機能 DOM
   var makeMemoBtn = document.getElementById("r-make-memo");
   var memoHint = document.getElementById("r-memo-hint");
-  var memoTabForm = document.getElementById("memo-tab-form");
-  var memoTabInput = document.getElementById("memo-tab-input");
-  var memoTabError = document.getElementById("memo-tab-error");
+  var meetingDetailInput = document.getElementById("meeting-detail");
+  var listDetailInput = document.getElementById("meeting-detail-list");
+  var memoTopicTitle = document.getElementById("memo-topic-title");
+  var memoTopicDetail = document.getElementById("memo-topic-detail");
+  var siteQrEl = document.getElementById("site-qr");
+  var logoutBtn = document.getElementById("logout-btn");
   var memoView = document.getElementById("memo-view");
   var memoTeamEl = document.getElementById("memo-team");
   var memoCodeEl = document.getElementById("memo-code");
@@ -84,7 +87,14 @@
   var stageCodesEl = document.getElementById("stage-codes");
   var meetingTitleInput = document.getElementById("meeting-title");
   var listTitleInput = document.getElementById("meeting-title-list");
-  var catsInput = document.getElementById("cats-input");
+  var catsForm = document.getElementById("cats-form");
+  var catNameInput = document.getElementById("cat-name");
+  var catsListEl = document.getElementById("cats-list");
+  var catsEmpty = document.getElementById("cats-empty");
+  var rCatsForm = document.getElementById("r-cats-form");
+  var rCatNameInput = document.getElementById("r-cat-name");
+  var rCatsListEl = document.getElementById("r-cats-list");
+  var rCatsEmpty = document.getElementById("r-cats-empty");
   var reportListEl = document.getElementById("report-list");
   var reportDetail = document.getElementById("report-detail");
   var aggModal = document.getElementById("agg-modal");
@@ -182,10 +192,6 @@
   function saveCats() {
     try { localStorage.setItem(CATS_KEY, JSON.stringify(cats)); } catch (e) {}
   }
-  function parseCats(text) {
-    return text.split(/[\n,、，]+/).map(function (s) { return s.trim(); })
-      .filter(function (s) { return s.length > 0; });
-  }
 
   // ---- メンバー操作 ----
   function addMembers(text) {
@@ -255,6 +261,45 @@
     renderRoleListInto(roleListEl);
     renderRoleListInto(rRoleListEl);
     if (roleEmpty) roleEmpty.hidden = roles.length > 0;
+  }
+
+  // ---- メモのラベル（役割と同じ操作感：追加していく／×で削除）----
+  function addCat(name) {
+    name = name.trim();
+    if (!name) return;
+    if (cats.indexOf(name) !== -1) return; // 重複は無視
+    cats.push(name);
+    saveCats();
+    renderCats();
+  }
+  function removeCat(index) {
+    cats.splice(index, 1);
+    saveCats();
+    renderCats();
+  }
+  function renderCatListInto(ul) {
+    if (!ul) return;
+    ul.innerHTML = "";
+    cats.forEach(function (name, i) {
+      var li = document.createElement("li");
+      var span = document.createElement("span");
+      span.textContent = name;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "remove";
+      btn.textContent = "×";
+      btn.setAttribute("aria-label", name + " を削除");
+      btn.addEventListener("click", function () { removeCat(i); });
+      li.appendChild(span);
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+  }
+  function renderCats() {
+    renderCatListInto(catsListEl);
+    renderCatListInto(rCatsListEl);
+    if (catsEmpty) catsEmpty.hidden = cats.length > 0;
+    if (rCatsEmpty) rCatsEmpty.hidden = cats.length > 0;
   }
 
   // ---- 描画 ----
@@ -681,6 +726,10 @@
 
       summaryEl.appendChild(div);
     }
+
+    // 番号を共有する画面なので、サイトを開くQRを表示（番号発行済みのときだけ）
+    if (rBoards) renderSiteQr(siteQrEl);
+    else if (siteQrEl) siteQrEl.hidden = true;
   }
 
   function makeMemo() {
@@ -690,7 +739,7 @@
     makeMemoBtn.disabled = true;
     makeMemoBtn.textContent = "作成中…";
     var title = getMeetingTitle();
-    apiPost("create_boards", { title: title, teams: labels, roles: roles, categories: cats })
+    apiPost("create_boards", { title: title, detail: getMeetingDetail(), teams: labels, roles: roles, categories: cats })
       .then(function (res) {
         if (!res || !res.boards) throw new Error(res && res.error ? res.error : "作成に失敗しました");
         rBoards = res.boards; // サーバーは送信順で返す＝チーム順
@@ -716,6 +765,11 @@
     title.className = "codes-title";
     title.textContent = "📒 メモ番号（参加者に共有）";
     el.appendChild(title);
+    // 見出しの直後に、サイトを開く小さいQRを常時表示
+    var qrBox = document.createElement("div");
+    qrBox.className = "site-qr site-qr-inline";
+    el.appendChild(qrBox);
+    renderSiteQr(qrBox);
     rBoards.forEach(function (b) {
       var row = document.createElement("div");
       row.className = "code-row";
@@ -744,7 +798,7 @@
     var labels = [];
     for (var t = 0; t < rTeamCount; t++) labels.push(teamName(t));
     var title = getMeetingTitle();
-    apiPost("create_boards", { title: title, teams: labels, roles: roles, categories: cats }).then(function (res) {
+    apiPost("create_boards", { title: title, detail: getMeetingDetail(), teams: labels, roles: roles, categories: cats }).then(function (res) {
       if (res && res.boards) {
         rBoards = res.boards;
         renderTeamCodes(stageCodesEl);
@@ -755,7 +809,7 @@
     }).catch(function () { /* 静的環境では番号なし */ });
   }
 
-  var TAB_IDS = ["tab-roulette", "tab-list", "tab-memo", "tab-report"];
+  var TAB_IDS = ["tab-roulette", "tab-list", "tab-report"];
   function hideAllTabPanels() {
     TAB_IDS.forEach(function (id) { document.getElementById(id).hidden = true; });
   }
@@ -765,7 +819,6 @@
     });
     document.getElementById("tab-roulette").hidden = name !== "roulette";
     document.getElementById("tab-list").hidden = name !== "list";
-    document.getElementById("tab-memo").hidden = name !== "memo";
     document.getElementById("tab-report").hidden = name !== "report";
     if (name === "report") loadReport();
     if (name === "list") { loadEmployees(); loadGroups(); }
@@ -774,6 +827,46 @@
   function getMeetingTitle() {
     var el = (rReturnTab === "list") ? listTitleInput : meetingTitleInput;
     return el ? el.value.trim() : "";
+  }
+  // 現在のモードに応じた議題の詳細を取得
+  function getMeetingDetail() {
+    var el = (rReturnTab === "list") ? listDetailInput : meetingDetailInput;
+    return el ? el.value.trim() : "";
+  }
+  // 詳細欄：内容に合わせて高さを自動調整（長い文章で枠が広がる）
+  function autoGrow(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
+  // サイトのURL（末尾のindex.html・ハッシュ・クエリを除く）
+  function siteUrl() {
+    try { return (location.origin + location.pathname).replace(/index\.html?$/i, ""); }
+    catch (e) { return ""; }
+  }
+  // 番号共有画面に「サイトを開くQR」を表示（同梱ライブラリで生成・外部通信なし／作れなければ隠す）
+  function renderSiteQr(container) {
+    if (!container) return;
+    var url = siteUrl();
+    if (!url || typeof qrcode === "undefined") { container.hidden = true; return; }
+    var dataUrl;
+    try {
+      var qr = qrcode(0, "M");   // 0=バージョン自動 / M=誤り訂正
+      qr.addData(url);
+      qr.make();
+      dataUrl = qr.createDataURL(5, 2); // セル5px・余白2セル
+    } catch (e) { container.hidden = true; return; }
+    container.innerHTML = "";
+    var img = document.createElement("img");
+    img.className = "site-qr-img";
+    img.alt = "サイトを開くQRコード";
+    img.src = dataUrl;
+    var cap = document.createElement("div");
+    cap.className = "site-qr-cap";
+    cap.textContent = "スマホで読み取ってサイトを開く";
+    container.appendChild(img);
+    container.appendChild(cap);
+    container.hidden = false;
   }
 
   // ---- メモ帳（共有付箋ボード）----
@@ -816,14 +909,17 @@
   function openBoard(code) {
     apiGet("get_board", "&code=" + encodeURIComponent(code)).then(function (res) {
       if (!res || res.error) {
-        memoTabError.hidden = false;
         if (authGate && !authGate.hidden) gateMemoError.hidden = false;
         return;
       }
-      memoTabError.hidden = true;
       if (gateMemoError) gateMemoError.hidden = true;
       if (authGate) authGate.hidden = true; // ゲート越しでも付箋ボードを表示
       memoCode = code;
+      // メモ帳の上部に議題名・詳細を表示
+      var mTitle = (res.title != null) ? String(res.title) : "";
+      var mDetail = (res.detail != null) ? String(res.detail) : "";
+      if (memoTopicTitle) { memoTopicTitle.textContent = mTitle; memoTopicTitle.hidden = mTitle === ""; }
+      if (memoTopicDetail) { memoTopicDetail.textContent = mDetail; memoTopicDetail.hidden = mDetail === ""; }
       memoTeamEl.textContent = res.board.team_label; // ヘッダーにはチーム名を表示
       memoCodeEl.textContent = "No. " + res.board.code;
       rosterText.value = (res.board.roster != null && res.board.roster !== "")
@@ -840,8 +936,9 @@
       window.alert("接続できませんでした。メモ機能はサーバー版（Xserver）で利用してください。");
     });
   }
+  var noteEditing = false; // 付箋をその場編集中は自動更新で上書きしない
   function refreshBoard() {
-    if (!memoCode) return;
+    if (!memoCode || noteEditing) return;
     apiGet("get_board", "&code=" + encodeURIComponent(memoCode)).then(function (res) {
       if (res && res.notes) renderNotes(res.notes);
       // 記入中でなければ他端末の更新を反映
@@ -884,10 +981,10 @@
       del.type = "button";
       del.className = "sticky-del";
       del.textContent = "×";
-      (function (note) {
-        edit.addEventListener("click", function () { editNote(note); });
+      (function (note, cardEl) {
+        edit.addEventListener("click", function () { startInlineEdit(cardEl, note); });
         del.addEventListener("click", function () { deleteNote(note.id); });
-      })(n);
+      })(n, card);
 
       var cat = document.createElement("span");
       cat.className = "sticky-cat";
@@ -910,15 +1007,49 @@
       memoBoardEl.appendChild(card);
     });
   }
-  function editNote(note) {
-    var body = window.prompt("付箋の内容を編集", note.body);
-    if (body === null) return;
-    body = body.trim();
-    if (body === "") return;
-    apiPost("update_note", { code: memoCode, id: note.id, body: body }).then(function (res) {
-      if (res && res.ok) refreshBoard();
-      else window.alert("更新に失敗しました" + (res && res.error ? "：" + res.error : ""));
-    }).catch(function () { window.alert("更新に失敗しました（接続不可）"); });
+  // 付箋の中でそのまま編集（別画面やダイアログを出さない）
+  function startInlineEdit(card, note) {
+    if (!card || card.querySelector(".sticky-edit-input")) return;
+    noteEditing = true;
+    var body = card.querySelector(".sticky-body");
+    if (body) body.hidden = true;
+    var editBtn = card.querySelector(".sticky-edit");
+    var delBtn = card.querySelector(".sticky-del");
+    if (editBtn) editBtn.hidden = true;
+    if (delBtn) delBtn.hidden = true;
+
+    var ta = document.createElement("textarea");
+    ta.className = "sticky-edit-input";
+    ta.value = note.body;
+
+    var actions = document.createElement("div");
+    actions.className = "sticky-edit-actions";
+    var save = document.createElement("button");
+    save.type = "button";
+    save.className = "btn btn-primary btn-sm";
+    save.textContent = "保存";
+    var cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "btn btn-text btn-sm";
+    cancel.textContent = "取消";
+    actions.appendChild(save);
+    actions.appendChild(cancel);
+
+    function finish() { noteEditing = false; refreshBoard(); }
+    save.addEventListener("click", function () {
+      var text = ta.value.trim();
+      if (text === "") { finish(); return; }
+      save.disabled = true;
+      apiPost("update_note", { code: memoCode, id: note.id, body: text }).then(function (res) {
+        if (res && res.ok) finish();
+        else { save.disabled = false; window.alert("更新に失敗しました" + (res && res.error ? "：" + res.error : "")); }
+      }).catch(function () { save.disabled = false; window.alert("更新に失敗しました（接続不可）"); });
+    });
+    cancel.addEventListener("click", finish);
+
+    card.appendChild(ta);
+    card.appendChild(actions);
+    ta.focus();
   }
   function addNote() {
     var text = noteInput.value.trim();
@@ -947,7 +1078,22 @@
         authRequired = true;
         if (!authPw()) authGate.hidden = false;
       }
+      updateAuthUi();
     }).catch(function () { /* 静的環境などは制限なし */ });
+  }
+  // ログイン済みのときだけ「ログアウト」を表示
+  function updateAuthUi() {
+    if (logoutBtn) logoutBtn.hidden = !authPw();
+  }
+  function logout() {
+    try { sessionStorage.removeItem("td-pw"); } catch (e) {}
+    closeBoard();
+    updateAuthUi();
+    if (authGate) {
+      if (gateMemoInput) gateMemoInput.value = "";
+      if (gatePw) gatePw.value = "";
+      authGate.hidden = false;
+    }
   }
   function exportCsv() {
     if (memoCode) window.open(API + "?action=export_csv&code=" + encodeURIComponent(memoCode), "_blank");
@@ -971,6 +1117,13 @@
     }).catch(function () {
       reportListEl.innerHTML = '<p class="empty-message">接続できませんでした（メモ機能はサーバー版で利用してください）。</p>';
     });
+  }
+  function deleteMeeting(meetingId, title) {
+    if (!window.confirm("議題「" + title + "」を削除します。\nこの議題の付箋・チーム番号もすべて消えます。よろしいですか？")) return;
+    apiPost("delete_meeting", { meeting_id: meetingId }).then(function (res) {
+      if (res && res.ok) loadReport();
+      else window.alert("削除に失敗しました" + (res && res.error ? "：" + res.error : ""));
+    }).catch(function () { window.alert("削除に失敗しました（接続不可）"); });
   }
   function renderMeetings(list) {
     reportListEl.innerHTML = "";
@@ -1006,14 +1159,19 @@
       var csv = document.createElement("button");
       csv.className = "btn btn-secondary";
       csv.textContent = "CSV";
-      (function (id) {
+      var del = document.createElement("button");
+      del.className = "btn btn-text ri-del";
+      del.textContent = "🗑 削除";
+      (function (id, mtitle) {
         view.addEventListener("click", function () { openAggregate(id); });
         csv.addEventListener("click", function () {
           window.open(API + "?action=export_csv&meeting=" + encodeURIComponent(id), "_blank");
         });
-      })(m.meeting_id);
+        del.addEventListener("click", function () { deleteMeeting(id, mtitle); });
+      })(m.meeting_id, (m.title && String(m.title).trim()) ? m.title : "(無題)");
       btns.appendChild(view);
       btns.appendChild(csv);
+      btns.appendChild(del);
 
       item.appendChild(info);
       item.appendChild(btns);
@@ -1317,26 +1475,31 @@
 
   // メモ機能
   makeMemoBtn.addEventListener("click", makeMemo);
-  memoTabForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    memoTabError.hidden = true;
-    var c = memoTabInput.value.trim();
-    if (c) openBoard(c);
-  });
   empForm.addEventListener("submit", function (e) { e.preventDefault(); addEmployeeFromForm(); });
   groupSaveBtn.addEventListener("click", saveGroup);
   groupLoadBtn.addEventListener("click", loadGroup);
   groupDeleteBtn.addEventListener("click", deleteGroupSel);
-  catsInput.addEventListener("change", function () {
-    var parsed = parseCats(catsInput.value);
-    cats = parsed.length ? parsed : DEFAULT_CATS.slice();
-    saveCats();
-    catsInput.value = cats.join("、");
+  catsForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    addCat(catNameInput.value);
+    catNameInput.value = "";
+    catNameInput.focus();
+  });
+  if (rCatsForm) rCatsForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    addCat(rCatNameInput.value);
+    rCatNameInput.value = "";
+    rCatNameInput.focus();
+  });
+  // 詳細欄は入力に合わせて高さを自動調整
+  [meetingDetailInput, listDetailInput].forEach(function (el) {
+    if (el) el.addEventListener("input", function () { autoGrow(el); });
   });
   openEmpBtn.addEventListener("click", function () { empModal.hidden = false; loadEmployees(); });
   empClose.addEventListener("click", function () { empModal.hidden = true; });
   empBackdrop.addEventListener("click", function () { empModal.hidden = true; });
   openHelpBtn.addEventListener("click", function () { helpModal.hidden = false; });
+  if (logoutBtn) logoutBtn.addEventListener("click", logout);
   helpClose.addEventListener("click", function () { helpModal.hidden = true; });
   helpBackdrop.addEventListener("click", function () { helpModal.hidden = true; });
   aggClose.addEventListener("click", function () { aggModal.hidden = true; });
@@ -1354,7 +1517,7 @@
     gateLoginError.hidden = true;
     try { sessionStorage.setItem("td-pw", gatePw.value); } catch (e2) {}
     apiPost("auth", {}).then(function (res) {
-      if (res && res.ok) { authGate.hidden = true; gatePw.value = ""; }
+      if (res && res.ok) { authGate.hidden = true; gatePw.value = ""; updateAuthUi(); }
       else { try { sessionStorage.removeItem("td-pw"); } catch (e3) {} gateLoginError.hidden = false; }
     }).catch(function () { gateLoginError.hidden = false; });
   });
@@ -1389,7 +1552,7 @@
   renderMembers();
   renderRoles();
   updateUnit();
-  if (catsInput) catsInput.value = cats.join("、");
+  renderCats();
   buildCatChips();
   loadEmployees(); // メンバー登録の検索プルダウン用に社員一覧を読み込む（サーバー版のみ）
   loadGroups();

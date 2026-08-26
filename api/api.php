@@ -59,7 +59,7 @@ try {
   if ($action === 'auth') { jsonOut(['ok' => authOk()]); }
 
   // 管理者のみの操作はパスワードで保護（メモ帳系＝参加者の入力は保護しない）
-  $PROTECTED = ['create_boards', 'list_meetings', 'aggregate', 'export_csv',
+  $PROTECTED = ['create_boards', 'list_meetings', 'aggregate', 'export_csv', 'delete_meeting',
                 'list_employees', 'save_employee', 'delete_employee',
                 'list_groups', 'save_group', 'delete_group'];
   if (in_array($action, $PROTECTED, true) && !authOk()) {
@@ -73,6 +73,7 @@ try {
     $teams = $in['teams'] ?? [];
     if (!is_array($teams) || count($teams) === 0) jsonOut(['error' => 'teams が必要です'], 400);
     $title = mb_substr(trim((string)($in['title'] ?? '')), 0, 100);
+    $detail = mb_substr(trim((string)($in['detail'] ?? '')), 0, 500);
 
     // メンバー記入欄のひな形（役割名 + メンバー）を作る
     $roleNames = $in['roles'] ?? [];
@@ -96,8 +97,8 @@ try {
     $catText = implode("\n", $catList);
 
     $meeting = bin2hex(random_bytes(8));
-    $pdo->prepare('INSERT INTO meetings (meeting_id, title, team_count, categories) VALUES (?, ?, ?, ?)')
-        ->execute([$meeting, $title, count($teams), $catText]);
+    $pdo->prepare('INSERT INTO meetings (meeting_id, title, detail, team_count, categories) VALUES (?, ?, ?, ?, ?)')
+        ->execute([$meeting, $title, $detail, count($teams), $catText]);
     $ins = $pdo->prepare('INSERT INTO boards (code, meeting_id, team_label, roster) VALUES (?, ?, ?, ?)');
     $boards = [];
     foreach ($teams as $label) {
@@ -108,6 +109,17 @@ try {
       $boards[] = ['code' => $code, 'team_label' => $label];
     }
     jsonOut(['meeting_id' => $meeting, 'title' => $title, 'boards' => $boards]);
+  }
+
+  if ($action === 'delete_meeting') {
+    // body: { meeting_id }  議題ごと削除（付箋・ボードも一緒に消える）
+    $in = readJson();
+    $meeting = trim((string)($in['meeting_id'] ?? ''));
+    if ($meeting === '') jsonOut(['error' => 'meeting_id が必要です'], 400);
+    $pdo->prepare('DELETE FROM notes    WHERE meeting_id = ?')->execute([$meeting]);
+    $pdo->prepare('DELETE FROM boards   WHERE meeting_id = ?')->execute([$meeting]);
+    $pdo->prepare('DELETE FROM meetings WHERE meeting_id = ?')->execute([$meeting]);
+    jsonOut(['ok' => true]);
   }
 
   if ($action === 'list_employees') {
@@ -246,17 +258,20 @@ try {
     $code = trim((string)($_GET['code'] ?? ''));
     $board = boardByCode($pdo, $code);
     if (!$board) jsonOut(['error' => 'not_found'], 404);
-    // 付箋は議題(meeting)単位で共有。チームには紐付けない。
-    $st = $pdo->prepare('SELECT id, category, body, created_at FROM notes WHERE meeting_id = ? ORDER BY id ASC');
-    $st->execute([$board['meeting_id']]);
-    // 議題ごとのラベル
-    $mc = $pdo->prepare('SELECT categories FROM meetings WHERE meeting_id = ?');
+    // 付箋はチーム(board)単位で表示。各チームは自分の付箋だけ見られる。
+    $st = $pdo->prepare('SELECT id, category, body, created_at FROM notes WHERE board_id = ? ORDER BY id ASC');
+    $st->execute([$board['id']]);
+    // 議題名・詳細・ラベル
+    $mc = $pdo->prepare('SELECT title, detail, categories FROM meetings WHERE meeting_id = ?');
     $mc->execute([$board['meeting_id']]);
-    $catText = (string)($mc->fetchColumn() ?: '');
+    $mrow = $mc->fetch() ?: [];
+    $catText = (string)($mrow['categories'] ?? '');
     $cats = array_values(array_filter(array_map('trim', explode("\n", $catText)), function ($s) { return $s !== ''; }));
     if (count($cats) === 0) $cats = ['意見', '質問', 'アイデア', '感想', 'その他'];
     jsonOut([
       'board' => ['code' => $board['code'], 'team_label' => $board['team_label'], 'roster' => $board['roster']],
+      'title' => (string)($mrow['title'] ?? ''),
+      'detail' => (string)($mrow['detail'] ?? ''),
       'categories' => $cats,
       'notes' => $st->fetchAll()
     ]);
@@ -285,8 +300,8 @@ try {
     $body = trim((string)($in['body'] ?? ''));
     if ($body === '') jsonOut(['error' => '本文が空です'], 400);
     $body = mb_substr($body, 0, 5000);
-    $ins = $pdo->prepare('INSERT INTO notes (meeting_id, category, body) VALUES (?, ?, ?)');
-    $ins->execute([$board['meeting_id'], $category, $body]);
+    $ins = $pdo->prepare('INSERT INTO notes (meeting_id, board_id, category, body) VALUES (?, ?, ?, ?)');
+    $ins->execute([$board['meeting_id'], $board['id'], $category, $body]);
     $id = (int)$pdo->lastInsertId();
     $st = $pdo->prepare('SELECT id, category, body, created_at FROM notes WHERE id = ?');
     $st->execute([$id]);
@@ -306,11 +321,11 @@ try {
     if (isset($in['category'])) {
       $category = mb_substr(trim((string)$in['category']), 0, 20);
       if ($category === '') $category = 'メモ';
-      $pdo->prepare('UPDATE notes SET body = ?, category = ? WHERE id = ? AND meeting_id = ?')
-          ->execute([$body, $category, $id, $board['meeting_id']]);
+      $pdo->prepare('UPDATE notes SET body = ?, category = ? WHERE id = ? AND board_id = ?')
+          ->execute([$body, $category, $id, $board['id']]);
     } else {
-      $pdo->prepare('UPDATE notes SET body = ? WHERE id = ? AND meeting_id = ?')
-          ->execute([$body, $id, $board['meeting_id']]);
+      $pdo->prepare('UPDATE notes SET body = ? WHERE id = ? AND board_id = ?')
+          ->execute([$body, $id, $board['id']]);
     }
     jsonOut(['ok' => true]);
   }
@@ -322,8 +337,8 @@ try {
     $id = (int)($in['id'] ?? 0);
     $board = boardByCode($pdo, $code);
     if (!$board) jsonOut(['error' => 'not_found'], 404);
-    $del = $pdo->prepare('DELETE FROM notes WHERE id = ? AND meeting_id = ?');
-    $del->execute([$id, $board['meeting_id']]);
+    $del = $pdo->prepare('DELETE FROM notes WHERE id = ? AND board_id = ?');
+    $del->execute([$id, $board['id']]);
     jsonOut(['ok' => true]);
   }
 
